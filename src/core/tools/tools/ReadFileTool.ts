@@ -1,3 +1,4 @@
+import type { TFile } from 'obsidian';
 import type { Tool, ToolContext } from '../ToolRegistry';
 import type { ToolResult } from '../../types/tools';
 
@@ -30,7 +31,7 @@ export class ReadFileTool implements Tool {
         return { content: `Path is a directory, not a file: ${filePath}`, isError: true };
       }
 
-      const content = await ctx.app.vault.read(file as any);
+      const content = await ctx.app.vault.read(file as TFile);
       const lines = content.split('\n');
       const offset = typeof input.offset === 'number' ? input.offset : 1;
       const limit = typeof input.limit === 'number' ? input.limit : lines.length;
@@ -48,7 +49,7 @@ export class ReadFileTool implements Tool {
       const sliced = lines.slice(offset - 1, offset - 1 + limit);
       const numbered = sliced.map((line, i) => `${offset + i}\t${line}`).join('\n');
       return { content: numbered };
-    } catch (e) {
+    } catch (e: unknown) {
       return { content: `Error reading ${filePath}: ${e instanceof Error ? e.message : String(e)}`, isError: true };
     }
   }

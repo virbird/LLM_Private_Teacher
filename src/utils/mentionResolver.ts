@@ -3,7 +3,7 @@
  * Returns the original text with file contents appended in <referenced_files> tags.
  */
 export interface FileReadAdapter {
-  getAbstractFileByPath(path: string): unknown | null;
+  getAbstractFileByPath(path: string): unknown;
   read(file: unknown): Promise<string>;
 }
 

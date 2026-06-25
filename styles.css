@@ -1,4 +1,8 @@
-/* Claudian API - Plugin Styles */
+/* AI Study Buddy - Plugin Styles */
+
+.is-hidden {
+  display: none !important;
+}
 
 .claudian-container {
   display: flex;

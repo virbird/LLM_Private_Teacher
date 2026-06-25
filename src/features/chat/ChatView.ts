@@ -1,4 +1,4 @@
-import { ItemView, Component, SuggestModal, Notice, type WorkspaceLeaf, type TFile } from 'obsidian';
+import { ItemView, Component, SuggestModal, Notice, MarkdownRenderer, type App, type WorkspaceLeaf, type TFile } from 'obsidian';
 import type ClaudianPlugin from '../../main';
 import { ChatState } from './state/ChatState';
 import { MessageRenderer } from './rendering/MessageRenderer';
@@ -40,7 +40,7 @@ function getAllSlashCommands(): Array<{ cmd: string; desc: string; category: str
 class MaterialPickerModal extends SuggestModal<TFile> {
   private onSelect: (file: TFile) => void;
 
-  constructor(app: any, onSelect: (file: TFile) => void) {
+  constructor(app: App, onSelect: (file: TFile) => void) {
     super(app);
     this.onSelect = onSelect;
     this.setPlaceholder('Select a Markdown file from your vault...');
@@ -97,7 +97,7 @@ export class ChatView extends ItemView {
   }
 
   getViewType(): string { return VIEW_TYPE_CLAUDIAN; }
-  getDisplayText(): string { return 'Claudian API'; }
+  getDisplayText(): string { return 'AI Study Buddy'; }
   getIcon(): string { return 'bot'; }
 
   async onOpen(): Promise<void> {
@@ -114,12 +114,10 @@ export class ChatView extends ItemView {
     this.buildRoleBar();
 
     // Conversation history panel (hidden by default)
-    this.historyEl = container.createDiv({ cls: 'claudian-history' });
-    this.historyEl.style.display = 'none';
+    this.historyEl = container.createDiv({ cls: 'claudian-history is-hidden' });
 
     // Help panel (hidden by default)
-    this.helpEl = container.createDiv({ cls: 'claudian-help' });
-    this.helpEl.style.display = 'none';
+    this.helpEl = container.createDiv({ cls: 'claudian-help is-hidden' });
     this.buildHelpPanel();
 
     // Messages area
@@ -129,8 +127,7 @@ export class ChatView extends ItemView {
     const inputArea = container.createDiv({ cls: 'claudian-input-area' });
 
     // Autocomplete popup
-    this.autocompleteEl = inputArea.createDiv({ cls: 'claudian-autocomplete' });
-    this.autocompleteEl.style.display = 'none';
+    this.autocompleteEl = inputArea.createDiv({ cls: 'claudian-autocomplete is-hidden' });
 
     this.inputEl = inputArea.createEl('textarea', { cls: 'claudian-input' });
     this.inputEl.placeholder = 'Ask anything... (@ to reference files, / for commands)';
@@ -138,15 +135,15 @@ export class ChatView extends ItemView {
 
     // Auto-resize textarea
     this.inputEl.addEventListener('input', () => {
-      this.inputEl.style.height = 'auto';
-      this.inputEl.style.height = Math.min(this.inputEl.scrollHeight, 200) + 'px';
+      this.inputEl.setCssStyles({ height: 'auto' });
+      this.inputEl.setCssStyles({ height: Math.min(this.inputEl.scrollHeight, 200) + 'px' });
       this.handleAutocomplete();
     });
 
     // Keyboard handling
     this.inputEl.addEventListener('keydown', (e) => {
       // Autocomplete navigation
-      if (this.autocompleteEl.style.display !== 'none') {
+      if (!this.autocompleteEl.hasClass('is-hidden')) {
         if (e.key === 'Escape') {
           this.hideAutocomplete();
           return;
@@ -163,7 +160,7 @@ export class ChatView extends ItemView {
 
       if (e.key === 'Enter' && !e.shiftKey) {
         e.preventDefault();
-        this.sendMessage();
+        void this.sendMessage();
       }
     });
 
@@ -173,19 +170,17 @@ export class ChatView extends ItemView {
 
     const btnGroup = toolbar.createDiv({ cls: 'claudian-btn-group' });
 
-    const stopBtn = btnGroup.createEl('button', { cls: 'claudian-btn claudian-btn-stop', text: 'Stop' });
-    stopBtn.style.display = 'none';
+    const stopBtn = btnGroup.createEl('button', { cls: 'claudian-btn claudian-btn-stop is-hidden', text: 'Stop' });
     stopBtn.addEventListener('click', () => {
       this.abortController?.abort();
       this.abortController = null;
     });
 
     const sendBtn = btnGroup.createEl('button', { cls: 'claudian-btn claudian-btn-send', text: 'Send' });
-    sendBtn.addEventListener('click', () => this.sendMessage());
+    sendBtn.addEventListener('click', () => { void this.sendMessage(); });
 
     // Loading indicator
-    this.loadingEl = this.messagesEl.createDiv({ cls: 'claudian-loading' });
-    this.loadingEl.style.display = 'none';
+    this.loadingEl = this.messagesEl.createDiv({ cls: 'claudian-loading is-hidden' });
     this.loadingEl.createSpan({ cls: 'claudian-loading-spinner' });
     this.loadingEl.createSpan({ text: 'Thinking...' });
 
@@ -194,10 +189,10 @@ export class ChatView extends ItemView {
     this.chatState = new ChatState({
       onMessagesChanged: () => this.renderMessages(),
       onStreamingChanged: (streaming) => {
-        stopBtn.style.display = streaming ? '' : 'none';
+        stopBtn.toggleClass('is-hidden', !streaming);
         sendBtn.disabled = streaming;
         this.inputEl.disabled = streaming;
-        this.loadingEl.style.display = streaming ? 'flex' : 'none';
+        this.loadingEl.toggleClass('is-hidden', !streaming);
       },
       onUsageChanged: (usage) => {
         if (usage) {
@@ -221,7 +216,7 @@ export class ChatView extends ItemView {
 
     // History toggle
     const historyBtn = row1.createEl('button', { cls: 'claudian-btn claudian-header-btn', text: '📋 History' });
-    historyBtn.addEventListener('click', () => this.toggleHistory());
+    historyBtn.addEventListener('click', () => { void this.toggleHistory(); });
 
     // Help toggle
     const helpBtn = row1.createEl('button', { cls: 'claudian-btn claudian-header-btn', text: '❓ Help' });
@@ -230,13 +225,13 @@ export class ChatView extends ItemView {
     row1.createDiv({ cls: 'claudian-header-spacer' });
 
     // Provider dropdown
-    const providerLabel = row1.createSpan({ cls: 'claudian-header-label', text: 'Provider:' });
+    row1.createSpan({ cls: 'claudian-header-label', text: 'Provider:' });
     this.providerSelect = row1.createEl('select', { cls: 'claudian-select claudian-provider-select' });
     this.populateProviderSelect();
     this.providerSelect.addEventListener('change', () => {
       const val = this.providerSelect.value as ProviderId;
       this.plugin.settings.activeProvider = val;
-      this.plugin.saveSettings();
+      void this.plugin.saveSettings();
       this.populateModelSelect();
     });
 
@@ -245,7 +240,7 @@ export class ChatView extends ItemView {
     this.populateModelSelect();
     this.modelSelect.addEventListener('change', () => {
       this.updateActiveModel(this.modelSelect.value);
-      this.plugin.saveSettings();
+      void this.plugin.saveSettings();
     });
 
     // Material dropdown
@@ -254,7 +249,7 @@ export class ChatView extends ItemView {
     this.populateMaterialSelect();
     this.materialSelect.addEventListener('change', () => {
       this.plugin.settings.activeMaterialPath = this.materialSelect.value;
-      this.plugin.saveSettings();
+      void this.plugin.saveSettings();
     });
 
     const addMaterialBtn = row1.createEl('button', { cls: 'claudian-btn claudian-header-btn claudian-material-add-btn', text: '+ Material' });
@@ -379,7 +374,7 @@ export class ChatView extends ItemView {
 
   private openMaterialPicker(): void {
     const modal = new MaterialPickerModal(this.app, (file) => {
-      this.addMaterial(file);
+      void this.addMaterial(file);
     });
     modal.open();
   }
@@ -426,7 +421,7 @@ export class ChatView extends ItemView {
     // Auto-select: if current active provider is not registered, switch to first available
     if (providers.length > 0 && !ProviderRegistry.get(this.plugin.settings.activeProvider)) {
       this.plugin.settings.activeProvider = providers[0].id;
-      this.plugin.saveSettings();
+      void this.plugin.saveSettings();
     }
 
     this.populateProviderSelect();
@@ -436,23 +431,23 @@ export class ChatView extends ItemView {
   // --- Conversation History ---
 
   private async toggleHistory(): Promise<void> {
-    const isVisible = this.historyEl.style.display !== 'none';
+    const isVisible = !this.historyEl.hasClass('is-hidden');
     if (isVisible) {
-      this.historyEl.style.display = 'none';
+      this.historyEl.addClass('is-hidden');
       return;
     }
 
-    this.historyEl.style.display = 'block';
+    this.historyEl.removeClass('is-hidden');
     this.historyEl.empty();
 
     const title = this.historyEl.createDiv({ cls: 'claudian-history-title' });
     title.createSpan({ text: 'Conversation History' });
     const closeBtn = title.createEl('button', { cls: 'claudian-btn claudian-header-btn', text: '✕' });
-    closeBtn.addEventListener('click', () => { this.historyEl.style.display = 'none'; });
+    closeBtn.addEventListener('click', () => { this.historyEl.addClass('is-hidden'); });
 
     try {
       this.conversationMetas = await this.plugin.sessionStorage.listAll();
-    } catch (e) {
+    } catch {
       this.conversationMetas = [];
     }
 
@@ -473,12 +468,13 @@ export class ChatView extends ItemView {
 
       const actions = item.createDiv({ cls: 'claudian-history-actions' });
       const loadBtn = actions.createEl('button', { cls: 'claudian-btn claudian-btn-sm', text: 'Load' });
-      loadBtn.addEventListener('click', () => this.loadConversation(meta.id));
+      loadBtn.addEventListener('click', () => { void this.loadConversation(meta.id); });
 
       const delBtn = actions.createEl('button', { cls: 'claudian-btn claudian-btn-sm claudian-btn-danger', text: '✕' });
-      delBtn.addEventListener('click', async () => {
-        await this.plugin.sessionStorage.delete(meta.id);
-        this.toggleHistory(); // refresh
+      delBtn.addEventListener('click', () => {
+        void this.plugin.sessionStorage.delete(meta.id).then(() => {
+          void this.toggleHistory();
+        });
       });
     }
   }
@@ -500,15 +496,15 @@ export class ChatView extends ItemView {
         this.chatState.handleStreamChunk({ type: 'done' });
       }
     }
-    this.historyEl.style.display = 'none';
+    this.historyEl.addClass('is-hidden');
     this.statusEl.textContent = `Loaded: ${conv.title}`;
   }
 
   private toggleHelp(): void {
-    const isVisible = this.helpEl.style.display !== 'none';
-    this.helpEl.style.display = isVisible ? 'none' : 'block';
+    const isVisible = !this.helpEl.hasClass('is-hidden');
+    this.helpEl.toggleClass('is-hidden', isVisible);
     if (!isVisible) {
-      this.historyEl.style.display = 'none';
+      this.historyEl.addClass('is-hidden');
     }
   }
 
@@ -518,7 +514,7 @@ export class ChatView extends ItemView {
     const title = this.helpEl.createDiv({ cls: 'claudian-help-title' });
     title.createSpan({ text: 'Claudian 快速上手' });
     const closeBtn = title.createEl('button', { cls: 'claudian-btn claudian-header-btn', text: '✕' });
-    closeBtn.addEventListener('click', () => { this.helpEl.style.display = 'none'; });
+    closeBtn.addEventListener('click', () => { this.helpEl.addClass('is-hidden'); });
 
     const content = this.helpEl.createDiv({ cls: 'claudian-help-content' });
 
@@ -528,7 +524,7 @@ export class ChatView extends ItemView {
       const ul = section.createEl('ul');
       for (const item of items) {
         const li = ul.createEl('li');
-        li.innerHTML = item;
+        void MarkdownRenderer.render(this.app, item, li, '', this.component);
       }
     };
 
@@ -606,7 +602,7 @@ export class ChatView extends ItemView {
     if (matches.length === 0) { this.hideAutocomplete(); return; }
 
     this.autocompleteEl.empty();
-    this.autocompleteEl.style.display = 'block';
+    this.autocompleteEl.removeClass('is-hidden');
 
     for (let i = 0; i < matches.length; i++) {
       const item = this.autocompleteEl.createDiv({ cls: 'claudian-ac-item' + (i === 0 ? ' is-active' : '') });
@@ -634,7 +630,7 @@ export class ChatView extends ItemView {
     if (matches.length === 0) { this.hideAutocomplete(); return; }
 
     this.autocompleteEl.empty();
-    this.autocompleteEl.style.display = 'block';
+    this.autocompleteEl.removeClass('is-hidden');
 
     for (let i = 0; i < matches.length; i++) {
       const item = this.autocompleteEl.createDiv({ cls: 'claudian-ac-item' + (i === 0 ? ' is-active' : '') });
@@ -662,7 +658,7 @@ export class ChatView extends ItemView {
   }
 
   private hideAutocomplete(): void {
-    this.autocompleteEl.style.display = 'none';
+    this.autocompleteEl.addClass('is-hidden');
     this.autocompleteEl.empty();
   }
 
@@ -691,8 +687,8 @@ export class ChatView extends ItemView {
   insertText(text: string): void {
     const current = this.inputEl.value;
     this.inputEl.value = current + text;
-    this.inputEl.style.height = 'auto';
-    this.inputEl.style.height = Math.min(this.inputEl.scrollHeight, 200) + 'px';
+    this.inputEl.setCssStyles({ height: 'auto' });
+    this.inputEl.setCssStyles({ height: Math.min(this.inputEl.scrollHeight, 200) + 'px' });
     this.inputEl.focus();
     // Place cursor at end
     const pos = this.inputEl.value.length;
@@ -711,13 +707,13 @@ export class ChatView extends ItemView {
     if (text.startsWith('/')) {
       if (await this.handleSlashCommand(text)) {
         this.inputEl.value = '';
-        this.inputEl.style.height = 'auto';
+        this.inputEl.setCssStyles({ height: 'auto' });
         return;
       }
     }
 
     this.inputEl.value = '';
-    this.inputEl.style.height = 'auto';
+    this.inputEl.setCssStyles({ height: 'auto' });
     this.hideAutocomplete();
 
     // Resolve @mentions — read file contents and append as context
@@ -776,16 +772,16 @@ export class ChatView extends ItemView {
 
       this.chatState.setUsage(result.totalUsage);
 
-      try { await this.saveConversation(); } catch (e) { console.warn('[Claudian] Save failed:', e); }
+      try { await this.saveConversation(); } catch (e: unknown) { console.warn('[Claudian] Save failed:', e); }
 
       this.statusEl.textContent = `Done — ${result.iterations} turn(s), ${result.totalUsage.outputTokens} tokens`;
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('[Claudian] sendMessage error:', error);
       if (this.abortController.signal.aborted) {
         this.chatState.handleStreamChunk({ type: 'done' });
         this.statusEl.textContent = 'Aborted';
       } else {
-        const errMsg = error?.message || String(error);
+        const errMsg = error instanceof Error ? error.message : String(error);
         this.statusEl.textContent = `Error: ${errMsg}`;
         this.chatState.handleStreamChunk({ type: 'error', content: errMsg });
       }
@@ -804,7 +800,7 @@ export class ChatView extends ItemView {
       const materialContent = await this.loadActiveMaterialContent();
       const wrappedPrompt = method.buildPrompt(query, materialContent);
       this.inputEl.value = wrappedPrompt;
-      this.sendMessage();
+      void this.sendMessage();
       return true;
     }
 
@@ -817,9 +813,9 @@ export class ChatView extends ItemView {
         this.statusEl.textContent = 'Conversation cleared';
         return true;
       case '/history':
-        this.toggleHistory();
+        void this.toggleHistory();
         return true;
-      case '/help':
+      case '/help': {
         this.chatState.addUserMessage('/help');
         this.chatState.startAssistantMessage();
         const general = BASE_SLASH_COMMANDS
@@ -833,6 +829,7 @@ export class ChatView extends ItemView {
         this.chatState.handleStreamChunk({ type: 'text', content: helpText });
         this.chatState.handleStreamChunk({ type: 'done' });
         return true;
+      }
       default:
         return false;
     }
@@ -846,7 +843,7 @@ export class ChatView extends ItemView {
     if (!file || 'children' in file) return undefined;
 
     try {
-      const content = await this.app.vault.read(file as any);
+      const content = await this.app.vault.read(file as TFile);
       const maxLen = 8000;
       if (content.length > maxLen) {
         return content.substring(0, maxLen) + '\n...(truncated)';
@@ -868,7 +865,7 @@ export class ChatView extends ItemView {
       const file = this.app.vault.getAbstractFileByPath(filePath);
       if (file && !('children' in file)) {
         try {
-          const content = await this.app.vault.read(file as any);
+          const content = await this.app.vault.read(file as TFile);
           const truncated = content.length > 4000 ? content.substring(0, 4000) + '\n...(truncated)' : content;
           contexts.push(`\n--- File: ${filePath} ---\n${truncated}\n--- End of ${filePath} ---`);
         } catch { /* skip unreadable files */ }

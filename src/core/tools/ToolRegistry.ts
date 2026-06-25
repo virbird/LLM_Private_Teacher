@@ -1,5 +1,4 @@
 import type { ToolResult } from '../types/tools';
-import type { ProviderId } from '../types/provider';
 import type { App } from 'obsidian';
 
 export interface ToolContext {

@@ -1,4 +1,4 @@
-import type { LlmProvider, ChatRequest, StreamEvent } from '../providers/LlmProvider';
+import type { LlmProvider, ChatRequest } from '../providers/LlmProvider';
 import type { ApiMessage, StreamChunk, AssistantContent, UsageInfo } from '../types/chat';
 import type { ToolCallInfo } from '../types/tools';
 import type { ToolExecutor } from '../tools/ToolExecutor';
@@ -51,7 +51,6 @@ export class AgentLoop {
       let stopReason = 'end_turn';
       const pendingToolCalls: { id: string; name: string; inputBuffer: string }[] = [];
       let currentToolId = '';
-      let currentToolName = '';
 
       config.onStreamChunk({ type: 'assistant_message_start' });
 
@@ -67,7 +66,6 @@ export class AgentLoop {
             break;
           case 'tool_call_start':
             currentToolId = event.id;
-            currentToolName = event.name;
             pendingToolCalls.push({ id: event.id, name: event.name, inputBuffer: '' });
             break;
           case 'tool_call_delta': {

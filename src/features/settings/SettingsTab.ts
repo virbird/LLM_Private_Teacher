@@ -29,7 +29,7 @@ export class ClaudianSettingsTab extends PluginSettingTab {
         }));
 
     // === Anthropic section ===
-    containerEl.createEl('h3', { text: 'Anthropic Claude' });
+    new Setting(containerEl).setName('Anthropic Claude').setHeading();
 
     new Setting(containerEl)
       .setName('API Key')
@@ -74,7 +74,7 @@ export class ClaudianSettingsTab extends PluginSettingTab {
     );
 
     // === OpenAI section ===
-    containerEl.createEl('h3', { text: 'OpenAI' });
+    new Setting(containerEl).setName('OpenAI').setHeading();
 
     new Setting(containerEl)
       .setName('API Key')
@@ -110,7 +110,7 @@ export class ClaudianSettingsTab extends PluginSettingTab {
     );
 
     // === OpenAI Compatible section ===
-    containerEl.createEl('h3', { text: 'OpenAI Compatible' });
+    new Setting(containerEl).setName('OpenAI Compatible').setHeading();
     containerEl.createEl('p', {
       text: 'Works with DeepSeek, Qwen, Moonshot, and other OpenAI-compatible APIs.',
       cls: 'setting-item-description',
@@ -161,7 +161,7 @@ export class ClaudianSettingsTab extends PluginSettingTab {
     );
 
     // === General section ===
-    containerEl.createEl('h3', { text: 'General' });
+    new Setting(containerEl).setName('General').setHeading();
 
     new Setting(containerEl)
       .setName('Custom System Prompt')
@@ -178,7 +178,7 @@ export class ClaudianSettingsTab extends PluginSettingTab {
 
 
   private addModelManager(containerEl: HTMLElement): void {
-    containerEl.createEl('h4', { text: 'Models' });
+    new Setting(containerEl).setName('Models').setHeading();
     containerEl.createEl('p', {
       text: 'Add multiple models and set one as default. The default model is marked with \u2605.',
       cls: 'setting-item-description',
@@ -227,11 +227,11 @@ export class ClaudianSettingsTab extends PluginSettingTab {
       this.renderModelList(listEl);
     };
 
-    addBtn.addEventListener('click', handleAdd);
+    addBtn.addEventListener('click', () => { void handleAdd(); });
     inputEl.addEventListener('keydown', (e) => {
       if (e.key === 'Enter') {
         e.preventDefault();
-        handleAdd();
+        void handleAdd();
       }
     });
   }
@@ -284,29 +284,33 @@ export class ClaudianSettingsTab extends PluginSettingTab {
           cls: 'claudian-btn claudian-btn-sm',
           text: 'Set Default',
         });
-        setDefaultBtn.addEventListener('click', async () => {
-          const c = this.plugin.settings.providers.openaiCompat;
-          if (!c.customModels) c.customModels = [];
-          // Move current default to customModels if it exists
-          if (c.model && c.model !== model.id && !c.customModels.includes(c.model)) {
-            c.customModels.push(c.model);
-          }
-          c.model = model.id;
-          c.customModels = c.customModels.filter(m => m !== model.id);
-          await this.plugin.saveSettings();
-          this.renderModelList(listEl);
+        setDefaultBtn.addEventListener('click', () => {
+          void (async () => {
+            const c = this.plugin.settings.providers.openaiCompat;
+            if (!c.customModels) c.customModels = [];
+            // Move current default to customModels if it exists
+            if (c.model && c.model !== model.id && !c.customModels.includes(c.model)) {
+              c.customModels.push(c.model);
+            }
+            c.model = model.id;
+            c.customModels = c.customModels.filter(m => m !== model.id);
+            await this.plugin.saveSettings();
+            this.renderModelList(listEl);
+          })();
         });
 
         const removeBtn = actions.createEl('button', {
           cls: 'claudian-btn claudian-btn-sm claudian-btn-danger',
           text: '\u2715',
         });
-        removeBtn.addEventListener('click', async () => {
-          const c = this.plugin.settings.providers.openaiCompat;
-          if (!c.customModels) c.customModels = [];
-          c.customModels = c.customModels.filter(m => m !== model.id);
-          await this.plugin.saveSettings();
-          this.renderModelList(listEl);
+        removeBtn.addEventListener('click', () => {
+          void (async () => {
+            const c = this.plugin.settings.providers.openaiCompat;
+            if (!c.customModels) c.customModels = [];
+            c.customModels = c.customModels.filter(m => m !== model.id);
+            await this.plugin.saveSettings();
+            this.renderModelList(listEl);
+          })();
         });
       }
     }
@@ -340,8 +344,9 @@ export class ClaudianSettingsTab extends PluginSettingTab {
               statusEl.textContent = `\u274c ${result.message} (${result.latencyMs}ms)`;
               statusEl.className = 'claudian-test-status is-error';
             }
-          } catch (e: any) {
-            statusEl.textContent = `\u274c Unexpected error: ${e?.message || e}`;
+          } catch (e: unknown) {
+            const errMsg = e instanceof Error ? e.message : String(e);
+            statusEl.textContent = `\u274c Unexpected error: ${errMsg}`;
             statusEl.className = 'claudian-test-status is-error';
           } finally {
             button.setDisabled(false);

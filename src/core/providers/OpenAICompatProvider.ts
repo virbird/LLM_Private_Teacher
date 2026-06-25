@@ -117,7 +117,7 @@ export class OpenAICompatProvider implements LlmProvider {
       if (lastYielded < eventQueue.length) {
         while (lastYielded < eventQueue.length) yield eventQueue[lastYielded++];
       } else {
-        await new Promise(r => setTimeout(r, 20));
+        await new Promise(r => window.setTimeout(r, 20));
       }
     }
     if (buffer.trim()) {

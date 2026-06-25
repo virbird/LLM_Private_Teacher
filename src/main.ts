@@ -1,4 +1,4 @@
-import { Plugin, type Editor, type MarkdownView, type Menu } from 'obsidian';
+import { Plugin, type Editor, type Menu } from 'obsidian';
 import type { PluginSettings } from './core/types/settings';
 import { ProviderRegistry } from './core/providers/ProviderRegistry';
 import { AnthropicProvider } from './core/providers/AnthropicProvider';
@@ -26,34 +26,34 @@ export default class ClaudianPlugin extends Plugin {
 
     this.registerView(VIEW_TYPE_CLAUDIAN, (leaf) => new ChatView(leaf, this));
 
-    this.addRibbonIcon('bot', 'Open Claudian API', () => {
-      this.activateView();
+    this.addRibbonIcon('bot', 'Open AI Study Buddy', () => {
+      void this.activateView();
     });
 
     this.addCommand({
-      id: 'open-claudian-api',
+      id: 'open-chat-view',
       name: 'Open chat view',
-      callback: () => this.activateView(),
+      callback: () => { void this.activateView(); },
     });
 
     // --- Quote to conversation ---
     this.addCommand({
-      id: 'claudian-quote-selection',
-      name: 'Quote selection to Claudian',
+      id: 'quote-selection',
+      name: 'Quote selection to chat',
       editorCallback: (editor: Editor) => {
         const selection = editor.getSelection();
         if (!selection.trim()) return;
         const file = this.app.workspace.getActiveFile();
         const filePath = file?.path ?? 'current file';
         const quoted = this.buildQuote(filePath, selection);
-        this.insertQuoteToChat(quoted);
+        void this.insertQuoteToChat(quoted);
       },
     });
 
     // --- Inline edit commands ---
     this.addCommand({
-      id: 'claudian-edit-selection',
-      name: 'Edit selection with Claudian',
+      id: 'edit-selection',
+      name: 'Edit selection with AI',
       editorCallback: (editor: Editor) => {
         const selection = editor.getSelection();
         if (!selection.trim()) return;
@@ -62,41 +62,41 @@ export default class ClaudianPlugin extends Plugin {
         const prompt = `Please improve/edit the following text from "${filePath}". ` +
           `Keep the same language and style, just improve clarity, grammar, and flow. ` +
           `Output ONLY the improved text, no explanations.\n\n${selection}`;
-        this.sendToChat(prompt);
+        void this.sendToChat(prompt);
       },
     });
 
     this.addCommand({
-      id: 'claudian-explain-selection',
-      name: 'Explain selection with Claudian',
+      id: 'explain-selection',
+      name: 'Explain selection with AI',
       editorCallback: (editor: Editor) => {
         const selection = editor.getSelection();
         if (!selection.trim()) return;
         const prompt = `Please explain the following content clearly and concisely:\n\n${selection}`;
-        this.sendToChat(prompt);
+        void this.sendToChat(prompt);
       },
     });
 
     this.addCommand({
-      id: 'claudian-translate-selection',
-      name: 'Translate selection with Claudian',
+      id: 'translate-selection',
+      name: 'Translate selection with AI',
       editorCallback: (editor: Editor) => {
         const selection = editor.getSelection();
         if (!selection.trim()) return;
         const prompt = `Please translate the following text. If it's in English, translate to Chinese. ` +
           `If it's in Chinese, translate to English. Output ONLY the translation.\n\n${selection}`;
-        this.sendToChat(prompt);
+        void this.sendToChat(prompt);
       },
     });
 
     this.addCommand({
-      id: 'claudian-summarize-selection',
-      name: 'Summarize selection with Claudian',
+      id: 'summarize-selection',
+      name: 'Summarize selection with AI',
       editorCallback: (editor: Editor) => {
         const selection = editor.getSelection();
         if (!selection.trim()) return;
         const prompt = `Please provide a concise summary of the following content:\n\n${selection}`;
-        this.sendToChat(prompt);
+        void this.sendToChat(prompt);
       },
     });
 
@@ -109,18 +109,18 @@ export default class ClaudianPlugin extends Plugin {
         menu.addSeparator();
 
         menu.addItem(item => {
-          item.setTitle('💬 Claudian: Quote to chat')
+          item.setTitle('💬 Quote to chat')
             .setIcon('message-square-quote')
             .onClick(() => {
               const file = this.app.workspace.getActiveFile();
               const filePath = file?.path ?? 'current file';
               const quoted = this.buildQuote(filePath, selection);
-              this.insertQuoteToChat(quoted);
+              void this.insertQuoteToChat(quoted);
             });
         });
 
         menu.addItem(item => {
-          item.setTitle('✏️ Claudian: Edit')
+          item.setTitle('✏️ Edit')
             .setIcon('pencil')
             .onClick(() => {
               const file = this.app.workspace.getActiveFile();
@@ -128,35 +128,35 @@ export default class ClaudianPlugin extends Plugin {
               const prompt = `Please improve/edit the following text from "${filePath}". ` +
                 `Keep the same language and style, just improve clarity, grammar, and flow. ` +
                 `Output ONLY the improved text, no explanations.\n\n${selection}`;
-              this.sendToChat(prompt);
+              void this.sendToChat(prompt);
             });
         });
 
         menu.addItem(item => {
-          item.setTitle('🔍 Claudian: Explain')
+          item.setTitle('🔍 Explain')
             .setIcon('info')
             .onClick(() => {
               const prompt = `Please explain the following content clearly and concisely:\n\n${selection}`;
-              this.sendToChat(prompt);
+              void this.sendToChat(prompt);
             });
         });
 
         menu.addItem(item => {
-          item.setTitle('🌐 Claudian: Translate')
+          item.setTitle('🌐 Translate')
             .setIcon('languages')
             .onClick(() => {
               const prompt = `Please translate the following text. If it's in English, translate to Chinese. ` +
                 `If it's in Chinese, translate to English. Output ONLY the translation.\n\n${selection}`;
-              this.sendToChat(prompt);
+              void this.sendToChat(prompt);
             });
         });
 
         menu.addItem(item => {
-          item.setTitle('📝 Claudian: Summarize')
+          item.setTitle('📝 Summarize')
             .setIcon('file-text')
             .onClick(() => {
               const prompt = `Please provide a concise summary of the following content:\n\n${selection}`;
-              this.sendToChat(prompt);
+              void this.sendToChat(prompt);
             });
         });
       })

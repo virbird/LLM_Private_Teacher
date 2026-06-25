@@ -1,6 +1,6 @@
 import type { ProviderCapabilities, ModelInfo } from '../types/provider';
 import type { ProviderToolDefinition, NormalizedToolCall } from '../types/tools';
-import type { ApiMessage, AssistantContent } from '../types/chat';
+import type { ApiMessage } from '../types/chat';
 import type { LlmProvider, ChatRequest, StreamEvent } from './LlmProvider';
 import { streamRequest } from '../../utils/request';
 import { parseClaudeSSE } from '../agent/StreamingParser';
@@ -83,7 +83,7 @@ export class AnthropicProvider implements LlmProvider {
           yield eventQueue[lastYielded++];
         }
       } else {
-        await new Promise(r => setTimeout(r, checkInterval));
+        await new Promise(r => window.setTimeout(r, checkInterval));
       }
     }
 

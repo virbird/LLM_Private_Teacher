@@ -1,6 +1,5 @@
 import type { ProviderCapabilities, ModelInfo } from '../types/provider';
 import type { ProviderToolDefinition, NormalizedToolCall } from '../types/tools';
-import type { ApiMessage } from '../types/chat';
 import type { LlmProvider, ChatRequest, StreamEvent } from './LlmProvider';
 import { streamRequest } from '../../utils/request';
 import { parseOpenAISSE } from '../agent/StreamingParser';
@@ -74,7 +73,7 @@ export class OpenAIProvider implements LlmProvider {
       if (lastYielded < eventQueue.length) {
         while (lastYielded < eventQueue.length) yield eventQueue[lastYielded++];
       } else {
-        await new Promise(r => setTimeout(r, 20));
+        await new Promise(r => window.setTimeout(r, 20));
       }
     }
 

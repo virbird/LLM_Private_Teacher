@@ -1,6 +1,6 @@
 import type { ProviderId } from '../types/provider';
 import type { ProviderToolDefinition, ToolResult } from '../types/tools';
-import type { ToolRegistry, Tool, ToolContext } from './ToolRegistry';
+import type { ToolRegistry, ToolContext } from './ToolRegistry';
 
 export class ToolExecutor {
   constructor(

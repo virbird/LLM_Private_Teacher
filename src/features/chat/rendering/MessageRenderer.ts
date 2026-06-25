@@ -29,7 +29,7 @@ export class MessageRenderer {
           const details = thinkEl.createEl('details');
           details.createEl('summary', { text: 'Thinking...' });
           const thinkContent = details.createDiv({ cls: 'claudian-thinking-content' });
-          MarkdownRenderer.renderMarkdown(thinking, thinkContent, '', component);
+          void MarkdownRenderer.render(this.app, thinking, thinkContent, '', component);
         }
       }
 
@@ -45,7 +45,7 @@ export class MessageRenderer {
             const details = resultEl.createEl('details');
             details.createEl('summary', { text: tc.isError ? 'Error' : 'Result' });
             const resultContent = details.createDiv();
-            MarkdownRenderer.renderMarkdown(tc.result, resultContent, '', component);
+            void MarkdownRenderer.render(this.app, tc.result, resultContent, '', component);
           }
         }
       }
@@ -53,7 +53,7 @@ export class MessageRenderer {
       // Render main text content
       if (msg.content) {
         const mdEl = contentEl.createDiv({ cls: 'claudian-markdown-content' });
-        MarkdownRenderer.renderMarkdown(msg.content, mdEl, '', component);
+        void MarkdownRenderer.render(this.app, msg.content, mdEl, '', component);
       }
     }
 

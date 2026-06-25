@@ -4,18 +4,15 @@ export function parseClaudeSSE(buffer: string): { events: StreamEvent[]; remaini
   const events: StreamEvent[] = [];
   const lines = buffer.split('\n');
   const remaining = lines.pop() ?? '';
-  let currentEvent = '';
 
   for (const line of lines) {
     const trimmed = line.trim();
     if (trimmed === '') continue;
-    if (trimmed.startsWith('event:')) {
-      currentEvent = trimmed.slice(6).trim();
-    } else if (trimmed.startsWith('data:')) {
+    if (trimmed.startsWith('data:')) {
       const jsonStr = trimmed.slice(5).trim();
       if (!jsonStr) continue;
       try {
-        const data = JSON.parse(jsonStr);
+        const data = JSON.parse(jsonStr) as Record<string, unknown>;
         const parsed = handleClaudeEvent(data);
         events.push(...parsed);
       } catch {
@@ -106,29 +103,34 @@ export function parseOpenAISSE(buffer: string): { events: StreamEvent[]; remaini
       return { events, remaining: '' };
     }
     try {
-      const data = JSON.parse(payload);
-      const choice = data.choices?.[0];
+      const data = JSON.parse(payload) as Record<string, unknown>;
+      const choices = data.choices as Array<Record<string, unknown>> | undefined;
+      const choice = choices?.[0];
       if (!choice) continue;
 
-      const delta = choice.delta ?? {};
+      const delta = (choice.delta ?? {}) as Record<string, unknown>;
       if (delta.content) {
-        events.push({ type: 'text_delta', text: delta.content });
+        events.push({ type: 'text_delta', text: delta.content as string });
       }
-      if (delta.tool_calls) {
-        for (const tc of delta.tool_calls) {
-          if (tc.id) {
-            events.push({ type: 'tool_call_start', id: tc.id, name: tc.function?.name ?? '' });
+      const toolCalls = delta.tool_calls as Array<Record<string, unknown>> | undefined;
+      if (toolCalls) {
+        for (const tc of toolCalls) {
+          const tcId = tc.id as string | undefined;
+          const tcFunc = tc.function as Record<string, unknown> | undefined;
+          if (tcId) {
+            events.push({ type: 'tool_call_start', id: tcId, name: (tcFunc?.name as string) ?? '' });
           }
-          if (tc.function?.arguments) {
-            events.push({ type: 'tool_call_delta', id: tc.id ?? '', inputJson: tc.function.arguments });
+          if (tcFunc?.arguments) {
+            events.push({ type: 'tool_call_delta', id: tcId ?? '', inputJson: tcFunc.arguments as string });
           }
         }
       }
-      if (choice.finish_reason) {
-        if (choice.finish_reason === 'tool_calls') {
+      const finishReason = choice.finish_reason as string | undefined;
+      if (finishReason) {
+        if (finishReason === 'tool_calls') {
           events.push({ type: 'message_end', stopReason: 'tool_use' });
         } else {
-          events.push({ type: 'message_end', stopReason: choice.finish_reason });
+          events.push({ type: 'message_end', stopReason: finishReason });
         }
       }
     } catch {
