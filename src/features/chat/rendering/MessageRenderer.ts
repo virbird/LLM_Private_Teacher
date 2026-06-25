@@ -15,7 +15,7 @@ export class MessageRenderer {
     const msgEl = this.containerEl.createDiv({ cls: `claudian-message claudian-message-${msg.role}` });
 
     const headerEl = msgEl.createDiv({ cls: 'claudian-message-header' });
-    headerEl.createSpan({ cls: 'claudian-message-role', text: msg.role === 'user' ? 'You' : 'Claudian' });
+    headerEl.createSpan({ cls: 'claudian-message-role', text: msg.role === 'user' ? 'You' : 'AI Study Buddy' });
 
     const contentEl = msgEl.createDiv({ cls: 'claudian-message-content' });
 

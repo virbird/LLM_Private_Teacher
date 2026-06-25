@@ -137,6 +137,9 @@ export class ChatView extends ItemView {
     container.empty();
     container.addClass('claudian-container');
 
+    // Initialize component early — needed by MarkdownRenderer in buildHelpPanel
+    this.component = new Component();
+
     // Header with provider/model switching + history
     this.headerEl = container.createDiv({ cls: 'claudian-header' });
     this.buildHeader();
@@ -217,7 +220,6 @@ export class ChatView extends ItemView {
     this.loadingEl.createSpan({ text: t('thinking') });
 
     // Initialize state
-    this.component = new Component();
     this.chatState = new ChatState({
       onMessagesChanged: () => this.renderMessages(),
       onStreamingChanged: (streaming) => {
@@ -753,11 +755,15 @@ export class ChatView extends ItemView {
 
     // Auto-inject active learning material so the AI tutor can reference it
     const materialPath = this.plugin.settings.activeMaterialPath;
+    console.log('[AI Study Buddy] activeMaterialPath:', materialPath || '(none)');
     if (materialPath && !resolvedText.includes(materialPath)) {
       const materialContent = await this.loadActiveMaterialContent();
+      console.log('[AI Study Buddy] material loaded:', materialContent ? `${materialContent.length} chars` : 'undefined');
       if (materialContent) {
-        resolvedText += `\n\n<learning_material path="${materialPath}">\n${materialContent}\n</learning_material>`;
+        resolvedText += `\n\n<learning_material path="${materialPath}">\n${materialContent}\n</learning_material>\n\n[IMPORTANT: The above is the user's selected learning material. You MUST base your response on this material content. Do NOT suggest selecting a material — it is already provided.]`;
       }
+    } else if (materialPath) {
+      console.log('[AI Study Buddy] material already in @mention, skipping auto-inject');
     }
 
     this.chatState.addUserMessage(text);
@@ -786,18 +792,21 @@ export class ChatView extends ItemView {
     const toolExecutor = new ToolExecutor(toolRegistry, { app: this.app });
 
     // Build messages for API (with resolved mentions)
+    // Note: filter removes the empty assistant placeholder; no slice needed
+    const allUserMsgs = this.chatState.messages.filter(mm => mm.role === 'user');
+    const lastUserMsg = allUserMsgs[allUserMsgs.length - 1];
     const apiMessages: ApiMessage[] = this.chatState.messages
       .filter(m => m.role === 'user' || (m.role === 'assistant' && m.content))
-      .slice(0, -1)
       .map(m => {
-        // Replace the last user message with resolved text
-        if (m === this.chatState.messages.filter(mm => mm.role === 'user').slice(-1)[0]) {
+        // Replace the last user message with resolved text (includes material)
+        if (m === lastUserMsg) {
           return { role: 'user' as const, content: resolvedText };
         }
         return { role: m.role as 'user' | 'assistant', content: m.content };
       });
 
     this.statusEl.textContent = t('calling', { provider: settings.activeProvider, model: this.getActiveModel() });
+    console.log('[AI Study Buddy] sending to API:', apiMessages.length, 'messages, last user msg length:', apiMessages.filter(m => m.role === 'user').slice(-1)[0]?.content?.length ?? 0);
 
     // Idle timeout: abort if no stream activity for REQUEST_TIMEOUT_MS
     this.resetIdleTimer();
@@ -820,12 +829,12 @@ export class ChatView extends ItemView {
       this.clearIdleTimer();
       this.chatState.setUsage(result.totalUsage);
 
-      try { await this.saveConversation(); } catch (e: unknown) { console.warn('[Claudian] Save failed:', e); }
+      try { await this.saveConversation(); } catch (e: unknown) { console.warn('[AI Study Buddy] Save failed:', e); }
 
       this.statusEl.textContent = t('done', { turns: String(result.iterations), tokens: String(result.totalUsage.outputTokens) });
     } catch (error: unknown) {
       this.clearIdleTimer();
-      console.error('[Claudian] sendMessage error:', error);
+      console.error('[AI Study Buddy] sendMessage error:', error);
       if (this.abortController.signal.aborted) {
         this.chatState.handleStreamChunk({ type: 'done' });
         this.statusEl.textContent = t('aborted');
@@ -943,7 +952,7 @@ export class ChatView extends ItemView {
       }
       return content;
     } catch (e: unknown) {
-      console.warn('[Claudian] Failed to load material:', path, e);
+      console.warn('[AI Study Buddy] Failed to load material:', path, e);
       return undefined;
     }
   }
