@@ -102,7 +102,7 @@ export class AgentLoop {
       const toolResultMessages: ApiMessage[] = [];
       for (const tc of pendingToolCalls) {
         let input: Record<string, unknown> = {};
-        try { input = JSON.parse(tc.inputBuffer || '{}'); } catch { /* empty */ }
+        try { input = JSON.parse(tc.inputBuffer || '{}') as Record<string, unknown>; } catch { /* empty */ }
 
         const toolCall: ToolCallInfo = { id: tc.id, name: tc.name, input, status: 'running' };
         allToolCalls.push(toolCall);

@@ -1,4 +1,4 @@
-import type { TFile } from 'obsidian';
+import { TFile } from 'obsidian';
 import type { Tool, ToolContext } from '../ToolRegistry';
 import type { ToolResult } from '../../types/tools';
 
@@ -21,13 +21,13 @@ export class EditFileTool implements Tool {
     const newText = input.new_text as string;
     try {
       const file = ctx.app.vault.getAbstractFileByPath(filePath);
-      if (!file) return { content: `File not found: ${filePath}`, isError: true };
-      const content = await ctx.app.vault.read(file as TFile);
+      if (!file || !(file instanceof TFile)) return { content: `File not found: ${filePath}`, isError: true };
+      const content = await ctx.app.vault.read(file);
       if (!content.includes(oldText)) {
         return { content: `old_text not found in ${filePath}. Make sure it matches exactly.`, isError: true };
       }
       const updated = content.replace(oldText, newText);
-      await ctx.app.vault.modify(file as TFile, updated);
+      await ctx.app.vault.modify(file, updated);
       return { content: `Successfully edited ${filePath}` };
     } catch (e: unknown) {
       return { content: `Error editing ${filePath}: ${e instanceof Error ? e.message : String(e)}`, isError: true };

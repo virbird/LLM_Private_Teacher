@@ -125,7 +125,7 @@ export const zh = {
   'settings.test': '测试',
   'settings.testing': '测试中...',
   'settings.test.error': '意外错误: {error}',
-  'settings.general': '通用设置',
+  'settings.general': '高级设置',
   'settings.systemPrompt': '自定义系统提示词',
   'settings.systemPrompt.desc': '附加到系统提示词的额外指令',
   'settings.systemPrompt.placeholder': '自定义指令...',

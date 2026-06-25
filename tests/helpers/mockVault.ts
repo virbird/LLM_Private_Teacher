@@ -2,6 +2,7 @@
  * In-memory Mock Vault that simulates Obsidian's app.vault API.
  * Used by all Tool tests for end-to-end verification without a real vault.
  */
+import { TFile, TFolder } from 'obsidian';
 
 interface VaultFile {
   path: string;
@@ -56,25 +57,16 @@ export class MockVault {
 
     if (entry.type === 'folder') {
       const children = this.getChildren(path);
-      return {
-        path: entry.path,
-        name: entry.path.split('/').pop() || '',
-        children,
-      };
+      return new TFolder(entry.path || '/', children);
     }
 
     // file
-    return {
-      path: entry.path,
-      name: entry.path.split('/').pop() || '',
-      basename: (entry as VaultFile).path.split('/').pop()?.replace(/\.[^.]+$/, '') || '',
-      extension: entry.path.includes('.') ? entry.path.split('.').pop() : '',
-    };
+    return new TFile(entry.path);
   }
 
   getRoot(): any {
     const children = this.getChildren('');
-    return { path: '', name: '', children };
+    return new TFolder('', children);
   }
 
   private getChildren(folderPath: string): any[] {
@@ -90,18 +82,9 @@ export class MockVault {
       if (remainder.includes('/')) continue;
 
       if (entry.type === 'folder') {
-        children.push({
-          path: entry.path,
-          name: entry.path.split('/').pop() || '',
-          children: this.getChildren(entry.path),
-        });
+        children.push(new TFolder(entry.path, this.getChildren(entry.path)));
       } else {
-        children.push({
-          path: entry.path,
-          name: entry.path.split('/').pop() || '',
-          basename: (entry as VaultFile).path.split('/').pop()?.replace(/\.[^.]+$/, '') || '',
-          extension: entry.path.includes('.') ? entry.path.split('.').pop() : '',
-        });
+        children.push(new TFile(entry.path));
       }
     }
     return children;
@@ -139,12 +122,7 @@ export class MockVault {
     const files: any[] = [];
     for (const [, entry] of this.entries) {
       if (entry.type === 'file' && entry.path.endsWith('.md')) {
-        files.push({
-          path: entry.path,
-          name: entry.path.split('/').pop() || '',
-          basename: entry.path.split('/').pop()?.replace(/\.[^.]+$/, '') || '',
-          extension: 'md',
-        });
+        files.push(new TFile(entry.path));
       }
     }
     return files;

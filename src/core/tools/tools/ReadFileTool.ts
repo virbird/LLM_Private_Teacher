@@ -1,4 +1,4 @@
-import type { TFile } from 'obsidian';
+import { TFile } from 'obsidian';
 import type { Tool, ToolContext } from '../ToolRegistry';
 import type { ToolResult } from '../../types/tools';
 
@@ -26,12 +26,15 @@ export class ReadFileTool implements Tool {
       if (!file) {
         return { content: `File not found: ${filePath}`, isError: true };
       }
-      // Reject folders (folders have a 'children' property)
       if ('children' in file) {
         return { content: `Path is a directory, not a file: ${filePath}`, isError: true };
       }
 
-      const content = await ctx.app.vault.read(file as TFile);
+      if (!(file instanceof TFile)) {
+        return { content: `Path is not a file: ${filePath}`, isError: true };
+      }
+
+      const content = await ctx.app.vault.read(file);
       const lines = content.split('\n');
       const offset = typeof input.offset === 'number' ? input.offset : 1;
       const limit = typeof input.limit === 'number' ? input.limit : lines.length;

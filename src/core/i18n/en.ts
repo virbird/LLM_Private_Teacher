@@ -125,7 +125,7 @@ export const en = {
   'settings.test': 'Test',
   'settings.testing': 'Testing...',
   'settings.test.error': 'Unexpected error: {error}',
-  'settings.general': 'General',
+  'settings.general': 'Advanced Settings',
   'settings.systemPrompt': 'Custom System Prompt',
   'settings.systemPrompt.desc': 'Additional instructions appended to the system prompt',
   'settings.systemPrompt.placeholder': 'Custom instructions...',

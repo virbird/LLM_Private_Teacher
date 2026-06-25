@@ -1,5 +1,6 @@
 import { DEFAULT_SETTINGS, type LearningMaterial } from '../../../src/core/types/settings';
 import { SettingsStorage } from '../../../src/core/storage/SettingsStorage';
+import { TFile } from 'obsidian';
 import { ChatView } from '../../../src/features/chat/ChatView';
 import { MethodRegistry } from '../../../src/core/learning/MethodRegistry';
 import { StudyGuideMethod } from '../../../src/core/learning/methods/StudyGuideMethod';
@@ -133,13 +134,17 @@ describe('ChatView material loading', () => {
     return {};
   }
 
-  function createChatView(plugin: any, files: any[] = []): ChatView {
+  function createChatView(plugin: any, files: { path: string; content: string }[] = []): ChatView {
+    const contentMap = new Map(files.map(f => [f.path, f.content]));
     const view = new ChatView(createMockLeaf(), plugin);
     (view as any).app = {
       vault: {
-        getMarkdownFiles: () => files,
-        getAbstractFileByPath: (path: string) => files.find((f: any) => f.path === path),
-        read: (file: any) => Promise.resolve(file.content || ''),
+        getMarkdownFiles: () => files.map(f => new TFile(f.path)),
+        getAbstractFileByPath: (path: string) => {
+          const f = files.find(ff => ff.path === path);
+          return f ? new TFile(path) : null;
+        },
+        read: (file: TFile) => Promise.resolve(contentMap.get(file.path) || ''),
       },
     };
     return view;

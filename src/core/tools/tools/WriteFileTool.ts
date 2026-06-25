@@ -1,4 +1,4 @@
-import type { TFile } from 'obsidian';
+import { TFile } from 'obsidian';
 import type { Tool, ToolContext } from '../ToolRegistry';
 import type { ToolResult } from '../../types/tools';
 
@@ -20,7 +20,10 @@ export class WriteFileTool implements Tool {
     try {
       const existing = ctx.app.vault.getAbstractFileByPath(filePath);
       if (existing) {
-        await ctx.app.vault.modify(existing as TFile, content);
+        if (!(existing instanceof TFile)) {
+          return { content: `Path is a directory, not a file: ${filePath}`, isError: true };
+        }
+        await ctx.app.vault.modify(existing, content);
       } else {
         // Ensure parent directory exists
         const dir = filePath.substring(0, filePath.lastIndexOf('/'));

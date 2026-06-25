@@ -1,4 +1,4 @@
-import { ItemView, Component, SuggestModal, Notice, MarkdownRenderer, type App, type WorkspaceLeaf, type TFile } from 'obsidian';
+import { ItemView, Component, SuggestModal, Notice, MarkdownRenderer, TFile, type App, type WorkspaceLeaf } from 'obsidian';
 import type ClaudianPlugin from '../../main';
 import { ChatState } from './state/ChatState';
 import { MessageRenderer } from './rendering/MessageRenderer';
@@ -802,7 +802,7 @@ export class ChatView extends ItemView {
         if (m === lastUserMsg) {
           return { role: 'user' as const, content: resolvedText };
         }
-        return { role: m.role as 'user' | 'assistant', content: m.content };
+        return { role: m.role, content: m.content };
       });
 
     this.statusEl.textContent = t('calling', { provider: settings.activeProvider, model: this.getActiveModel() });
@@ -942,10 +942,10 @@ export class ChatView extends ItemView {
     if (!path) return undefined;
 
     const file = this.app.vault.getAbstractFileByPath(path);
-    if (!file || 'children' in file) return undefined;
+    if (!file || !(file instanceof TFile)) return undefined;
 
     try {
-      const content = await this.app.vault.read(file as TFile);
+      const content = await this.app.vault.read(file);
       const maxLen = 8000;
       if (content.length > maxLen) {
         return content.substring(0, maxLen) + '\n...(truncated)';
@@ -965,9 +965,9 @@ export class ChatView extends ItemView {
     while ((match = mentionRegex.exec(text)) !== null) {
       const filePath = match[1];
       const file = this.app.vault.getAbstractFileByPath(filePath);
-      if (file && !('children' in file)) {
+      if (file instanceof TFile) {
         try {
-          const content = await this.app.vault.read(file as TFile);
+          const content = await this.app.vault.read(file);
           const truncated = content.length > 4000 ? content.substring(0, 4000) + '\n...(truncated)' : content;
           contexts.push(`\n--- File: ${filePath} ---\n${truncated}\n--- End of ${filePath} ---`);
         } catch { /* skip unreadable files */ }

@@ -38,7 +38,8 @@ export class OpenAIProvider implements LlmProvider {
 
   normalizeToolCall(raw: unknown): NormalizedToolCall {
     const r = raw as { id: string; function: { name: string; arguments: string } };
-    return { id: r.id, name: r.function.name, input: JSON.parse(r.function.arguments) };
+    const parsedArgs: unknown = JSON.parse(r.function.arguments);
+    return { id: r.id, name: r.function.name, input: parsedArgs as Record<string, unknown> };
   }
 
   async *chat(request: ChatRequest): AsyncGenerator<StreamEvent> {

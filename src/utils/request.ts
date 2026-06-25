@@ -14,7 +14,6 @@ export async function streamRequest(
 ): Promise<void> {
   // Try native fetch first (available in Electron desktop)
   // fetch is required for streaming SSE support; requestUrl does not support streaming
-  // eslint-disable-next-line obsidianmd/no-fetch
   if (typeof fetch !== 'undefined') {
     await streamViaFetch(options, onChunk);
     return;
@@ -28,7 +27,6 @@ async function streamViaFetch(
   options: StreamRequestOptions,
   onChunk: (text: string) => void,
 ): Promise<void> {
-  // eslint-disable-next-line obsidianmd/no-fetch
   const response = await fetch(options.url, {
     method: options.method,
     headers: options.headers,

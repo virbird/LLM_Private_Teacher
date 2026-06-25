@@ -195,7 +195,7 @@ export default class ClaudianPlugin extends Plugin {
         await leaf.setViewState({ type: VIEW_TYPE_CLAUDIAN, active: true });
       }
     }
-    if (leaf) workspace.revealLeaf(leaf);
+    if (leaf) await workspace.revealLeaf(leaf);
   }
 
   private buildQuote(filePath: string, selection: string): string {

@@ -1,4 +1,4 @@
-import type { TFolder } from 'obsidian';
+import { TFolder } from 'obsidian';
 import type { Tool, ToolContext } from '../ToolRegistry';
 import type { ToolResult } from '../../types/tools';
 
@@ -17,10 +17,10 @@ export class ListFilesTool implements Tool {
     const dirPath = input.path as string;
     try {
       const folder = dirPath === '.' ? ctx.app.vault.getRoot() : ctx.app.vault.getAbstractFileByPath(dirPath);
-      if (!folder || !('children' in folder)) {
+      if (!folder || !(folder instanceof TFolder)) {
         return { content: `Directory not found: ${dirPath}`, isError: true };
       }
-      const entries = (folder as TFolder).children.map((child) => {
+      const entries = folder.children.map((child) => {
         const type = 'children' in child ? 'folder' : 'file';
         return `${type}\t${child.path}`;
       });
