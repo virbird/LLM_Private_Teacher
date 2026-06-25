@@ -24,7 +24,6 @@ export class ErrorNotebook {
   /** Add mistakes from a quiz */
   async addMistakes(mistakes: Omit<MistakeEntry, 'id' | 'mastered' | 'masteredDate' | 'reviewCount'>[]): Promise<number> {
     const index = await this.loadIndex();
-    const today = new Date().toISOString().slice(0, 10);
     let added = 0;
 
     for (const m of mistakes) {

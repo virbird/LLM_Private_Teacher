@@ -1,13 +1,31 @@
 // Minimal Obsidian API mock for testing
+export class DataAdapter {
+  exists(_path: string): Promise<boolean> { return Promise.resolve(false); }
+  read(_path: string): Promise<string> { return Promise.resolve(''); }
+  write(_path: string, _data: string): Promise<void> { return Promise.resolve(); }
+  mkdir(_path: string): Promise<void> { return Promise.resolve(); }
+}
+export class Vault {
+  adapter: DataAdapter = new DataAdapter();
+  getMarkdownFiles(): TFile[] { return []; }
+  getAbstractFileByPath(_path: string): TFile | TFolder | null { return null; }
+  read(_file: TFile): Promise<string> { return Promise.resolve(''); }
+  modify(_file: TFile, _content: string): Promise<void> { return Promise.resolve(); }
+  create(_path: string, _content: string): Promise<TFile> { return Promise.resolve(new TFile('')); }
+}
 export class App {
-  vault: any = { getMarkdownFiles: () => [], getAbstractFileByPath: () => null, read: () => Promise.resolve('') };
+  vault: Vault = new Vault();
 }
 export class Plugin {}
 export class ItemView {
   app: any = new App();
   containerEl: any = { children: [{}, {}], empty: () => {}, createDiv: () => ({}) };
 }
-export class PluginSettingTab {}
+export class PluginSettingTab {
+  app: App = new App();
+  containerEl: any = { empty: () => {}, createEl: () => ({}), createDiv: () => ({}) };
+  display(): void {}
+}
 export class SuggestModal<T> {
   app: any;
   constructor(app: any) { this.app = app; }

@@ -259,7 +259,7 @@ export class ChatView extends ItemView {
     row1.createDiv({ cls: 'claudian-header-spacer' });
 
     // Provider dropdown
-    const providerLabel = row1.createSpan({ cls: 'claudian-header-label', text: t('provider') });
+    row1.createSpan({ cls: 'claudian-header-label', text: t('provider') });
     this.providerSelect = row1.createEl('select', { cls: 'claudian-select claudian-provider-select' });
     this.populateProviderSelect();
     this.providerSelect.addEventListener('change', () => {

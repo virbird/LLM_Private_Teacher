@@ -3,12 +3,14 @@
  * - Plugin metadata: .claudian-api/learning/ (hidden, via vault.adapter)
  * - User-visible content: learning/ folders (via vault.create/modify)
  */
+import { type App, type Vault, type DataAdapter, TFile } from 'obsidian';
+
 export class LearningStorage {
-  private adapter: any; // vault.adapter
-  private vault: any;   // app.vault
+  private adapter: DataAdapter;
+  private vault: Vault;
   private hiddenRoot: string;
 
-  constructor(app: any) {
+  constructor(app: App) {
     this.vault = app.vault;
     this.adapter = app.vault.adapter;
     this.hiddenRoot = '.claudian-api/learning';
@@ -51,7 +53,7 @@ export class LearningStorage {
     await this.ensureDir(dir);
 
     const existing = this.vault.getAbstractFileByPath(path);
-    if (existing) {
+    if (existing instanceof TFile) {
       await this.vault.modify(existing, content);
     } else {
       await this.vault.create(path, content);

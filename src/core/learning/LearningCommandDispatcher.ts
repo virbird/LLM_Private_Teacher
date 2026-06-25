@@ -5,12 +5,13 @@ import { buildFlashcardPrompt, parseFlashcards, type Flashcard } from '../prompt
 import { buildSummaryPrompt } from '../prompt/summary';
 import { buildKnowledgeMapPrompt } from '../prompt/knowledgeMap';
 import { buildPlanPrompt } from '../prompt/plan';
-import { buildQuizPrompt, parseQuizAnswers } from '../prompt/quiz';
+import { buildQuizPrompt } from '../prompt/quiz';
 import { SpacedRepetitionManager, type ReviewEntry } from './spacedRepetition';
 import { LearningStatsService } from './stats';
 import { ErrorNotebook } from './errorNotebook';
 import { buildStudyBuddyPrompt } from '../prompt/studyBuddy';
 import { buildErrorReviewPrompt } from '../prompt/errorReview';
+import { type App } from 'obsidian';
 import type { PluginSettings } from '../types/settings';
 import type { ChatMessage } from '../types/chat';
 import type { ChatRequest } from '../providers/LlmProvider';
@@ -18,8 +19,7 @@ import type { RolePreset } from '../prompt/roles';
 import { t } from '../i18n';
 
 export interface CommandContext {
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any -- Obsidian App type not exposed
-  app: any;
+  app: App;
   settings: PluginSettings;
   messages: ChatMessage[];
   materialContent?: string;
@@ -40,8 +40,7 @@ export class LearningCommandDispatcher {
   private statsService: LearningStatsService;
   private errorNotebook: ErrorNotebook;
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any -- Obsidian App type not exposed
-  constructor(app: any) {
+  constructor(app: App) {
     this.storage = new LearningStorage(app);
     this.spacedRepetition = new SpacedRepetitionManager(this.storage);
     this.statsService = new LearningStatsService(this.storage);

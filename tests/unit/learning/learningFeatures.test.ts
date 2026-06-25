@@ -4,6 +4,7 @@ import { buildKnowledgeMapPrompt } from '../../../src/core/prompt/knowledgeMap';
 import { LearningStorage } from '../../../src/core/learning/LearningStorage';
 import { setLocale } from '../../../src/core/i18n';
 import { t } from '../../../src/core/i18n';
+import { TFile } from 'obsidian';
 
 describe('Flashcard prompt builder', () => {
   it('includes topic in prompt', () => {
@@ -204,7 +205,7 @@ describe('LearningStorage', () => {
 
   it('writeVaultFile modifies existing file', async () => {
     const modifyFn = jest.fn().mockResolvedValue(undefined);
-    const existingFile = { path: 'learning/test.md' };
+    const existingFile = new TFile('learning/test.md');
     const app = createMockApp({
       vault: {
         getAbstractFileByPath: jest.fn().mockReturnValue(existingFile),
