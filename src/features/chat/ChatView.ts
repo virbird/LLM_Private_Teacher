@@ -24,6 +24,8 @@ import type { en as EnMap } from '../../core/i18n/en';
 
 export const VIEW_TYPE_CLAUDIAN = 'claudian-api-view';
 
+const REQUEST_TIMEOUT_MS = 300_000; // 300 seconds (5 min) idle timeout
+
 type I18nKey = keyof typeof EnMap;
 
 const BASE_SLASH_COMMANDS = [
@@ -108,6 +110,7 @@ export class ChatView extends ItemView {
   private learningDispatcher: LearningCommandDispatcher;
   private stopBtn!: HTMLButtonElement;
   private sendBtn!: HTMLButtonElement;
+  private idleTimer: ReturnType<typeof window.setTimeout> | null = null;
 
   constructor(leaf: WorkspaceLeaf, plugin: ClaudianPlugin) {
     super(leaf);
@@ -746,7 +749,16 @@ export class ChatView extends ItemView {
     this.hideAutocomplete();
 
     // Resolve @mentions — read file contents and append as context
-    const resolvedText = await this.resolveMentions(text);
+    let resolvedText = await this.resolveMentions(text);
+
+    // Auto-inject active learning material so the AI tutor can reference it
+    const materialPath = this.plugin.settings.activeMaterialPath;
+    if (materialPath && !resolvedText.includes(materialPath)) {
+      const materialContent = await this.loadActiveMaterialContent();
+      if (materialContent) {
+        resolvedText += `\n\n<learning_material path="${materialPath}">\n${materialContent}\n</learning_material>`;
+      }
+    }
 
     this.chatState.addUserMessage(text);
     this.chatState.startAssistantMessage();
@@ -787,6 +799,9 @@ export class ChatView extends ItemView {
 
     this.statusEl.textContent = t('calling', { provider: settings.activeProvider, model: this.getActiveModel() });
 
+    // Idle timeout: abort if no stream activity for REQUEST_TIMEOUT_MS
+    this.resetIdleTimer();
+
     const agentLoop = new AgentLoop();
     try {
       const result = await agentLoop.run(apiMessages, {
@@ -795,16 +810,21 @@ export class ChatView extends ItemView {
         systemPrompt: buildSystemPrompt({ customPrompt: settings.systemPrompt, activeRole: this.activeRole }),
         model: this.getActiveModel(),
         maxTokens: this.getMaxTokens(),
-        onStreamChunk: (chunk) => this.chatState.handleStreamChunk(chunk),
+        onStreamChunk: (chunk) => {
+          this.resetIdleTimer();
+          this.chatState.handleStreamChunk(chunk);
+        },
         signal: this.abortController.signal,
       });
 
+      this.clearIdleTimer();
       this.chatState.setUsage(result.totalUsage);
 
       try { await this.saveConversation(); } catch (e: unknown) { console.warn('[Claudian] Save failed:', e); }
 
       this.statusEl.textContent = t('done', { turns: String(result.iterations), tokens: String(result.totalUsage.outputTokens) });
     } catch (error: unknown) {
+      this.clearIdleTimer();
       console.error('[Claudian] sendMessage error:', error);
       if (this.abortController.signal.aborted) {
         this.chatState.handleStreamChunk({ type: 'done' });
@@ -816,6 +836,25 @@ export class ChatView extends ItemView {
       }
     } finally {
       this.abortController = null;
+    }
+  }
+
+  private resetIdleTimer(): void {
+    this.clearIdleTimer();
+    this.idleTimer = window.setTimeout(() => {
+      if (this.abortController && !this.abortController.signal.aborted) {
+        this.abortController.abort();
+        const timeoutMsg = t('request.timeout', { seconds: String(REQUEST_TIMEOUT_MS / 1000) });
+        this.statusEl.textContent = timeoutMsg;
+        this.chatState.handleStreamChunk({ type: 'error', content: timeoutMsg });
+      }
+    }, REQUEST_TIMEOUT_MS);
+  }
+
+  private clearIdleTimer(): void {
+    if (this.idleTimer !== null) {
+      window.clearTimeout(this.idleTimer);
+      this.idleTimer = null;
     }
   }
 
@@ -961,6 +1000,7 @@ export class ChatView extends ItemView {
   }
 
   async onClose(): Promise<void> {
+    this.clearIdleTimer();
     this.abortController?.abort();
   }
 }

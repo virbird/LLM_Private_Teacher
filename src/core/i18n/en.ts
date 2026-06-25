@@ -21,6 +21,8 @@ export const en = {
   'thinking': 'Thinking...',
   'sending': 'Sending...',
   'aborted': 'Aborted',
+  'request.timeout': 'Request timed out after {seconds}s with no response',
+  'request.retry': 'Retry',
   'conversationCleared': 'Conversation cleared',
   'tokens': 'Tokens: {in} in / {out} out ({pct}% context)',
   'calling': 'Calling {provider} ({model})...',

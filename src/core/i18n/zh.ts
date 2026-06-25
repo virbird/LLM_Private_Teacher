@@ -21,6 +21,8 @@ export const zh = {
   'thinking': '思考中...',
   'sending': '发送中...',
   'aborted': '已中止',
+  'request.timeout': '请求超时（{seconds}秒无响应）',
+  'request.retry': '重试',
   'conversationCleared': '对话已清空',
   'tokens': '令牌: {in} 输入 / {out} 输出 ({pct}% 上下文)',
   'calling': '调用 {provider} ({model})...',
