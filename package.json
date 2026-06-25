@@ -1,7 +1,7 @@
 {
   "name": "claudian-api",
-  "version": "1.0.0",
-  "description": "Claudian API - AI chat plugin for Obsidian with direct LLM API calls (Desktop + iPad)",
+  "version": "1.0.3",
+  "description": "AI Study Buddy - AI learning assistant plugin for Obsidian with direct LLM API calls (Desktop + iPad)",
   "main": "main.js",
   "scripts": {
     "dev": "node esbuild.config.mjs",
