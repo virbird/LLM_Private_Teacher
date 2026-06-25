@@ -5,6 +5,7 @@ export const StudyGuideMethod: LearningMethod = {
   name: '即时学习指南',
   description: '基于材料生成核心概念、误区、练习和关联',
   command: '/guide',
+  i18nKey: 'method.guide',
   buildPrompt(query: string, materialContent?: string): string {
     return `你是一位资深学科导师。请基于${materialContent || "【学习材料】（请在对话中粘贴或 @ 引用相关材料）"}生成一份结构化学习指南。
 

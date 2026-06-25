@@ -5,6 +5,7 @@ export const ConfusionTerminatorMethod: LearningMethod = {
   name: '困惑终结者',
   description: '用学术/类比/图像三种方式解释困惑概念',
   command: '/explain',
+  i18nKey: 'method.confuse',
   buildPrompt(query: string, materialContent?: string): string {
     return `你是一位善于比喻的教学专家。请基于${materialContent || "【学习材料】（请在对话中粘贴或 @ 引用相关材料）"}用多种方式解释用户提出的困惑概念。
 

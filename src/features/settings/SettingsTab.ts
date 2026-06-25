@@ -2,6 +2,8 @@ import { PluginSettingTab, Setting, Notice, type App } from 'obsidian';
 import type ClaudianPlugin from '../../main';
 import type { ProviderId } from '../../core/types/provider';
 import { testAnthropic, testOpenAI, type TestResult } from '../../utils/testConnection';
+import { t, setLocale } from '../../core/i18n';
+import { ChatView } from '../chat/ChatView';
 
 export class ClaudianSettingsTab extends PluginSettingTab {
   plugin: ClaudianPlugin;
@@ -15,9 +17,32 @@ export class ClaudianSettingsTab extends PluginSettingTab {
     const { containerEl } = this;
     containerEl.empty();
 
+    // Language selector
     new Setting(containerEl)
-      .setName('Active Provider')
-      .setDesc('Choose which LLM provider to use')
+      .setName(t('settings.language'))
+      .setDesc(t('settings.language.desc'))
+      .addDropdown(dropdown => dropdown
+        .addOption('en', 'English')
+        .addOption('zh', '中文')
+        .setValue(this.plugin.settings.locale || 'en')
+        .onChange(async (value) => {
+          this.plugin.settings.locale = value;
+          setLocale(value);
+          await this.plugin.saveSettings();
+          this.display(); // Re-render settings with new locale
+          // Refresh all open ChatView instances
+          const leaves = this.plugin.app.workspace.getLeavesOfType('claudian-api-view');
+          for (const leaf of leaves) {
+            const view = leaf.view as ChatView;
+            if (view && typeof view.refreshUI === 'function') {
+              view.refreshUI();
+            }
+          }
+        }));
+
+    new Setting(containerEl)
+      .setName(t('settings.activeProvider'))
+      .setDesc(t('settings.activeProvider.desc'))
       .addDropdown(dropdown => dropdown
         .addOption('anthropic', 'Anthropic Claude')
         .addOption('openai', 'OpenAI')
@@ -32,8 +57,8 @@ export class ClaudianSettingsTab extends PluginSettingTab {
     new Setting(containerEl).setName('Anthropic Claude').setHeading();
 
     new Setting(containerEl)
-      .setName('API Key')
-      .setDesc('Your Anthropic API key')
+      .setName(t('settings.apiKey'))
+      .setDesc(t('settings.apiKey.anthropic.desc'))
       .addText(text => text
         .setPlaceholder('sk-ant-...')
         .setValue(this.plugin.settings.providers.anthropic.apiKey)
@@ -44,7 +69,7 @@ export class ClaudianSettingsTab extends PluginSettingTab {
         }));
 
     new Setting(containerEl)
-      .setName('Model')
+      .setName(t('settings.model'))
       .addDropdown(dropdown => dropdown
         .addOption('claude-sonnet-4-20250514', 'Claude Sonnet 4')
         .addOption('claude-opus-4-20250514', 'Claude Opus 4')
@@ -56,7 +81,7 @@ export class ClaudianSettingsTab extends PluginSettingTab {
         }));
 
     new Setting(containerEl)
-      .setName('Max Tokens')
+      .setName(t('settings.maxTokens'))
       .addText(text => text
         .setValue(String(this.plugin.settings.providers.anthropic.maxTokens))
         .onChange(async (value) => {
@@ -66,7 +91,7 @@ export class ClaudianSettingsTab extends PluginSettingTab {
 
     this.addTestButton(
       containerEl,
-      'Test Anthropic Connection',
+      t('settings.test.anthropic'),
       () => testAnthropic(
         this.plugin.settings.providers.anthropic.apiKey,
         this.plugin.settings.providers.anthropic.model,
@@ -77,7 +102,7 @@ export class ClaudianSettingsTab extends PluginSettingTab {
     new Setting(containerEl).setName('OpenAI').setHeading();
 
     new Setting(containerEl)
-      .setName('API Key')
+      .setName(t('settings.apiKey'))
       .addText(text => text
         .setPlaceholder('sk-...')
         .setValue(this.plugin.settings.providers.openai.apiKey)
@@ -88,7 +113,7 @@ export class ClaudianSettingsTab extends PluginSettingTab {
         }));
 
     new Setting(containerEl)
-      .setName('Model')
+      .setName(t('settings.model'))
       .addDropdown(dropdown => dropdown
         .addOption('gpt-4o', 'GPT-4o')
         .addOption('gpt-4o-mini', 'GPT-4o Mini')
@@ -101,7 +126,7 @@ export class ClaudianSettingsTab extends PluginSettingTab {
 
     this.addTestButton(
       containerEl,
-      'Test OpenAI Connection',
+      t('settings.test.openai'),
       () => testOpenAI(
         this.plugin.settings.providers.openai.apiKey,
         this.plugin.settings.providers.openai.model,
@@ -112,13 +137,13 @@ export class ClaudianSettingsTab extends PluginSettingTab {
     // === OpenAI Compatible section ===
     new Setting(containerEl).setName('OpenAI Compatible').setHeading();
     containerEl.createEl('p', {
-      text: 'Works with DeepSeek, Qwen, Moonshot, and other OpenAI-compatible APIs.',
+      text: t('settings.openaiCompat.desc'),
       cls: 'setting-item-description',
     });
 
     new Setting(containerEl)
-      .setName('Base URL')
-      .setDesc('API endpoint (e.g., https://api.deepseek.com/v1)')
+      .setName(t('settings.baseUrl'))
+      .setDesc(t('settings.baseUrl.desc'))
       .addText(text => text
         .setPlaceholder('https://api.deepseek.com/v1')
         .setValue(this.plugin.settings.providers.openaiCompat.baseUrl)
@@ -129,7 +154,7 @@ export class ClaudianSettingsTab extends PluginSettingTab {
         }));
 
     new Setting(containerEl)
-      .setName('API Key')
+      .setName(t('settings.apiKey'))
       .addText(text => text
         .setValue(this.plugin.settings.providers.openaiCompat.apiKey)
         .onChange(async (value) => {
@@ -139,7 +164,7 @@ export class ClaudianSettingsTab extends PluginSettingTab {
         }));
 
     new Setting(containerEl)
-      .setName('Context Window')
+      .setName(t('settings.contextWindow'))
       .addText(text => text
         .setValue(String(this.plugin.settings.providers.openaiCompat.contextWindow))
         .onChange(async (value) => {
@@ -152,7 +177,7 @@ export class ClaudianSettingsTab extends PluginSettingTab {
 
     this.addTestButton(
       containerEl,
-      'Test Connection',
+      t('settings.test.openaiCompat'),
       () => testOpenAI(
         this.plugin.settings.providers.openaiCompat.apiKey,
         this.plugin.settings.providers.openaiCompat.model,
@@ -161,13 +186,13 @@ export class ClaudianSettingsTab extends PluginSettingTab {
     );
 
     // === General section ===
-    new Setting(containerEl).setName('General').setHeading();
+    new Setting(containerEl).setName(t('settings.general')).setHeading();
 
     new Setting(containerEl)
-      .setName('Custom System Prompt')
-      .setDesc('Additional instructions appended to the system prompt')
+      .setName(t('settings.systemPrompt'))
+      .setDesc(t('settings.systemPrompt.desc'))
       .addTextArea(text => text
-        .setPlaceholder('Custom instructions...')
+        .setPlaceholder(t('settings.systemPrompt.placeholder'))
         .setValue(this.plugin.settings.systemPrompt)
         .onChange(async (value) => {
           this.plugin.settings.systemPrompt = value;
@@ -178,9 +203,9 @@ export class ClaudianSettingsTab extends PluginSettingTab {
 
 
   private addModelManager(containerEl: HTMLElement): void {
-    new Setting(containerEl).setName('Models').setHeading();
+    new Setting(containerEl).setName(t('settings.models')).setHeading();
     containerEl.createEl('p', {
-      text: 'Add multiple models and set one as default. The default model is marked with \u2605.',
+      text: t('settings.models.desc'),
       cls: 'setting-item-description',
     });
 
@@ -194,10 +219,10 @@ export class ClaudianSettingsTab extends PluginSettingTab {
     const inputEl = addRow.createEl('input', {
       cls: 'claudian-model-add-input',
       type: 'text',
-      placeholder: 'Model name (e.g., qwen-max)',
+      placeholder: t('settings.models.placeholder'),
     });
 
-    const addBtn = addRow.createEl('button', { cls: 'claudian-btn claudian-btn-send', text: '+ Add' });
+    const addBtn = addRow.createEl('button', { cls: 'claudian-btn claudian-btn-send', text: t('settings.models.add') });
 
     const handleAdd = async () => {
       const modelName = inputEl.value.trim();
@@ -211,7 +236,7 @@ export class ClaudianSettingsTab extends PluginSettingTab {
       console.log('[Claudian] Add model:', modelName, 'existing:', allModels);
 
       if (allModels.includes(modelName)) {
-        new Notice(`\u26a0\ufe0f "${modelName}" is already configured`, 3000);
+        new Notice(t('settings.models.exists', { name: modelName }), 3000);
         inputEl.value = '';
         return;
       }
@@ -222,7 +247,7 @@ export class ClaudianSettingsTab extends PluginSettingTab {
       }
       await this.plugin.saveSettings();
       inputEl.value = '';
-      new Notice(`\u2705 Added "${modelName}"`, 3000);
+      new Notice(t('settings.models.added', { name: modelName }), 3000);
       console.log('[Claudian] Model added. default:', compat.model, 'custom:', compat.customModels);
       this.renderModelList(listEl);
     };
@@ -261,7 +286,7 @@ export class ClaudianSettingsTab extends PluginSettingTab {
     }
 
     if (allModels.length === 0) {
-      listEl.createDiv({ cls: 'claudian-model-empty', text: 'No models configured. Add one above.' });
+      listEl.createDiv({ cls: 'claudian-model-empty', text: t('settings.models.empty') });
       return;
     }
 
@@ -274,7 +299,7 @@ export class ClaudianSettingsTab extends PluginSettingTab {
       }
       nameDiv.createSpan({ text: model.id });
       if (model.isDefault) {
-        nameDiv.createSpan({ cls: 'claudian-model-badge', text: 'default' });
+        nameDiv.createSpan({ cls: 'claudian-model-badge', text: t('settings.models.default') });
       }
 
       const actions = item.createDiv({ cls: 'claudian-model-actions' });
@@ -282,7 +307,7 @@ export class ClaudianSettingsTab extends PluginSettingTab {
       if (!model.isDefault) {
         const setDefaultBtn = actions.createEl('button', {
           cls: 'claudian-btn claudian-btn-sm',
-          text: 'Set Default',
+          text: t('settings.models.setDefault'),
         });
         setDefaultBtn.addEventListener('click', () => {
           void (async () => {
@@ -325,13 +350,13 @@ export class ClaudianSettingsTab extends PluginSettingTab {
 
     new Setting(containerEl)
       .setName(label)
-      .setDesc('Sends a minimal request to verify your configuration')
+      .setDesc(t('settings.test.desc'))
       .addButton(button => button
-        .setButtonText('Test')
+        .setButtonText(t('settings.test'))
         .setCta()
         .onClick(async () => {
           button.setDisabled(true);
-          button.setButtonText('Testing...');
+          button.setButtonText(t('settings.testing'));
           statusEl.textContent = '';
           statusEl.className = 'claudian-test-status';
 
@@ -346,11 +371,11 @@ export class ClaudianSettingsTab extends PluginSettingTab {
             }
           } catch (e: unknown) {
             const errMsg = e instanceof Error ? e.message : String(e);
-            statusEl.textContent = `\u274c Unexpected error: ${errMsg}`;
+            statusEl.textContent = t('settings.test.error', { error: errMsg });
             statusEl.className = 'claudian-test-status is-error';
           } finally {
             button.setDisabled(false);
-            button.setButtonText('Test');
+            button.setButtonText(t('settings.test'));
           }
         }));
   }

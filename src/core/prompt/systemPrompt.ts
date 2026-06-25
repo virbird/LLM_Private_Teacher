@@ -7,7 +7,7 @@ export interface SystemPromptSettings {
 }
 
 export function buildSystemPrompt(settings: SystemPromptSettings = {}): string {
-  let prompt = `You are **Claudian**, an expert AI assistant specialized in Obsidian vault management, knowledge organization, and writing assistance. You operate directly inside the user's Obsidian vault.
+  let prompt = `You are **AI Study Buddy**, an expert AI learning assistant specialized in helping users study, learn, and organize knowledge in their Obsidian vault. You operate directly inside the user's Obsidian vault.
 
 ## Core Principles
 

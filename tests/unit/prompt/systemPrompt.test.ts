@@ -2,7 +2,7 @@ import { buildSystemPrompt } from '../../../src/core/prompt/systemPrompt';
 import { ROLE_PRESETS, getRoleById } from '../../../src/core/prompt/roles';
 
 describe('buildSystemPrompt', () => {
-  const basePrompt = 'You are **Claudian**';
+  const basePrompt = 'You are **AI Study Buddy**';
 
   it('includes base prompt when no settings', () => {
     const result = buildSystemPrompt();

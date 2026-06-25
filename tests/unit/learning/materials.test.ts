@@ -110,6 +110,19 @@ describe('SettingsStorage migration', () => {
 describe('ChatView material loading', () => {
   function createMockPlugin(settingsOverrides: any = {}) {
     return {
+      app: {
+        vault: {
+          adapter: {
+            exists: jest.fn().mockResolvedValue(false),
+            read: jest.fn().mockResolvedValue('{}'),
+            write: jest.fn().mockResolvedValue(undefined),
+            mkdir: jest.fn().mockResolvedValue(undefined),
+          },
+          getAbstractFileByPath: jest.fn().mockReturnValue(null),
+          create: jest.fn().mockResolvedValue({}),
+          modify: jest.fn().mockResolvedValue(undefined),
+        },
+      },
       settings: { ...DEFAULT_SETTINGS, ...settingsOverrides },
       saveSettings: jest.fn(),
       sessionStorage: { listAll: jest.fn().mockResolvedValue([]) },

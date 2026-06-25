@@ -5,6 +5,7 @@ export const FeynmanTestMethod: LearningMethod = {
   name: '费曼技巧测试',
   description: '用户解释概念，AI评估理解深度',
   command: '/feynman',
+  i18nKey: 'method.feynman',
   buildPrompt(query: string, materialContent?: string): string {
     const reference = materialContent
       ? `【参考材料】\n${materialContent}\n\n学生解释应围绕上述材料中的概念展开。`

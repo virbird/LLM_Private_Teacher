@@ -18,23 +18,38 @@ import { WriteFileTool } from '../../core/tools/tools/WriteFileTool';
 import { EditFileTool } from '../../core/tools/tools/EditFileTool';
 import { ListFilesTool } from '../../core/tools/tools/ListFilesTool';
 import { SearchTool } from '../../core/tools/tools/SearchTool';
+import { t } from '../../core/i18n';
+import { LearningCommandDispatcher, type CommandContext } from '../../core/learning/LearningCommandDispatcher';
+import type { en as EnMap } from '../../core/i18n/en';
 
 export const VIEW_TYPE_CLAUDIAN = 'claudian-api-view';
 
+type I18nKey = keyof typeof EnMap;
+
 const BASE_SLASH_COMMANDS = [
-  { cmd: '/new', desc: 'Start a new conversation', category: 'general' as const },
-  { cmd: '/clear', desc: 'Clear current conversation', category: 'general' as const },
-  { cmd: '/history', desc: 'Show conversation history', category: 'general' as const },
-  { cmd: '/help', desc: 'Show available commands', category: 'general' as const },
+  { cmd: '/new', descKey: 'cmd.new' as I18nKey, category: 'general' as const },
+  { cmd: '/clear', descKey: 'cmd.clear' as I18nKey, category: 'general' as const },
+  { cmd: '/history', descKey: 'cmd.history' as I18nKey, category: 'general' as const },
+  { cmd: '/help', descKey: 'cmd.help' as I18nKey, category: 'general' as const },
+  { cmd: '/flashcard', descKey: 'cmd.flashcard' as I18nKey, category: 'learning' as const },
+  { cmd: '/summary', descKey: 'cmd.summary' as I18nKey, category: 'learning' as const },
+  { cmd: '/map', descKey: 'cmd.map' as I18nKey, category: 'learning' as const },
+  { cmd: '/plan', descKey: 'cmd.plan' as I18nKey, category: 'learning' as const },
+  { cmd: '/review', descKey: 'cmd.review' as I18nKey, category: 'learning' as const },
+  { cmd: '/checkup', descKey: 'cmd.checkup' as I18nKey, category: 'learning' as const },
+  { cmd: '/stats', descKey: 'cmd.stats' as I18nKey, category: 'learning' as const },
+  { cmd: '/mistakes', descKey: 'cmd.mistakes' as I18nKey, category: 'learning' as const },
+  { cmd: '/buddy', descKey: 'cmd.buddy' as I18nKey, category: 'learning' as const },
 ];
 
 function getAllSlashCommands(): Array<{ cmd: string; desc: string; category: string }> {
   const methods = MethodRegistry.getCommandList().map(m => ({
     cmd: m.command,
-    desc: `${m.name} — ${m.description}`,
+    desc: `${t(m.i18nKey + '.name' as I18nKey)} — ${t(m.i18nKey + '.desc' as I18nKey)}`,
     category: 'learning',
   }));
-  return [...BASE_SLASH_COMMANDS, ...methods];
+  const base = BASE_SLASH_COMMANDS.map(c => ({ cmd: c.cmd, desc: t(c.descKey), category: c.category }));
+  return [...base, ...methods];
 }
 
 class MaterialPickerModal extends SuggestModal<TFile> {
@@ -43,11 +58,11 @@ class MaterialPickerModal extends SuggestModal<TFile> {
   constructor(app: App, onSelect: (file: TFile) => void) {
     super(app);
     this.onSelect = onSelect;
-    this.setPlaceholder('Select a Markdown file from your vault...');
+    this.setPlaceholder(t('picker.placeholder'));
     this.setInstructions([
-      { command: '↑↓', purpose: 'navigate' },
-      { command: '↵', purpose: 'select as learning material' },
-      { command: 'esc', purpose: 'cancel' },
+      { command: '↑↓', purpose: t('picker.navigate') },
+      { command: '↵', purpose: t('picker.select') },
+      { command: 'esc', purpose: t('picker.cancel') },
     ]);
   }
 
@@ -90,15 +105,29 @@ export class ChatView extends ItemView {
   private component!: Component;
   private conversationMetas: ConversationMeta[] = [];
   private helpEl!: HTMLElement;
+  private learningDispatcher: LearningCommandDispatcher;
+  private stopBtn!: HTMLButtonElement;
+  private sendBtn!: HTMLButtonElement;
 
   constructor(leaf: WorkspaceLeaf, plugin: ClaudianPlugin) {
     super(leaf);
     this.plugin = plugin;
+    this.learningDispatcher = new LearningCommandDispatcher(plugin.app);
   }
 
   getViewType(): string { return VIEW_TYPE_CLAUDIAN; }
   getDisplayText(): string { return 'AI Study Buddy'; }
   getIcon(): string { return 'bot'; }
+
+  /** Re-render all UI elements after locale change */
+  refreshUI(): void {
+    this.buildHeader();
+    this.buildRoleBar();
+    this.buildHelpPanel();
+    this.inputEl.placeholder = t('input.placeholder');
+    this.stopBtn.setText(t('stop'));
+    this.sendBtn.setText(t('send'));
+  }
 
   async onOpen(): Promise<void> {
     const container = this.containerEl.children[1] as HTMLElement;
@@ -130,7 +159,7 @@ export class ChatView extends ItemView {
     this.autocompleteEl = inputArea.createDiv({ cls: 'claudian-autocomplete is-hidden' });
 
     this.inputEl = inputArea.createEl('textarea', { cls: 'claudian-input' });
-    this.inputEl.placeholder = 'Ask anything... (@ to reference files, / for commands)';
+    this.inputEl.placeholder = t('input.placeholder');
     this.inputEl.rows = 1;
 
     // Auto-resize textarea
@@ -170,33 +199,33 @@ export class ChatView extends ItemView {
 
     const btnGroup = toolbar.createDiv({ cls: 'claudian-btn-group' });
 
-    const stopBtn = btnGroup.createEl('button', { cls: 'claudian-btn claudian-btn-stop is-hidden', text: 'Stop' });
-    stopBtn.addEventListener('click', () => {
+    this.stopBtn = btnGroup.createEl('button', { cls: 'claudian-btn claudian-btn-stop is-hidden', text: t('stop') });
+    this.stopBtn.addEventListener('click', () => {
       this.abortController?.abort();
       this.abortController = null;
     });
 
-    const sendBtn = btnGroup.createEl('button', { cls: 'claudian-btn claudian-btn-send', text: 'Send' });
-    sendBtn.addEventListener('click', () => { void this.sendMessage(); });
+    this.sendBtn = btnGroup.createEl('button', { cls: 'claudian-btn claudian-btn-send', text: t('send') });
+    this.sendBtn.addEventListener('click', () => { void this.sendMessage(); });
 
     // Loading indicator
     this.loadingEl = this.messagesEl.createDiv({ cls: 'claudian-loading is-hidden' });
     this.loadingEl.createSpan({ cls: 'claudian-loading-spinner' });
-    this.loadingEl.createSpan({ text: 'Thinking...' });
+    this.loadingEl.createSpan({ text: t('thinking') });
 
     // Initialize state
     this.component = new Component();
     this.chatState = new ChatState({
       onMessagesChanged: () => this.renderMessages(),
       onStreamingChanged: (streaming) => {
-        stopBtn.toggleClass('is-hidden', !streaming);
-        sendBtn.disabled = streaming;
+        this.stopBtn.toggleClass('is-hidden', !streaming);
+        this.sendBtn.disabled = streaming;
         this.inputEl.disabled = streaming;
         this.loadingEl.toggleClass('is-hidden', !streaming);
       },
       onUsageChanged: (usage) => {
         if (usage) {
-          this.statusEl.textContent = `Tokens: ${usage.inputTokens.toLocaleString()} in / ${usage.outputTokens.toLocaleString()} out (${usage.percentage.toFixed(1)}% context)`;
+          this.statusEl.textContent = t('tokens', { in: usage.inputTokens.toLocaleString(), out: usage.outputTokens.toLocaleString(), pct: usage.percentage.toFixed(1) });
         }
       },
     });
@@ -210,22 +239,22 @@ export class ChatView extends ItemView {
     const row1 = this.headerEl.createDiv({ cls: 'claudian-header-row' });
 
     // New chat button
-    const newBtn = row1.createEl('button', { cls: 'claudian-btn claudian-header-btn', text: '+ New' });
-    newBtn.title = 'New conversation';
+    const newBtn = row1.createEl('button', { cls: 'claudian-btn claudian-header-btn', text: t('new') });
+    newBtn.title = t('new.title');
     newBtn.addEventListener('click', () => this.startNewConversation());
 
     // History toggle
-    const historyBtn = row1.createEl('button', { cls: 'claudian-btn claudian-header-btn', text: '📋 History' });
+    const historyBtn = row1.createEl('button', { cls: 'claudian-btn claudian-header-btn', text: t('history') });
     historyBtn.addEventListener('click', () => { void this.toggleHistory(); });
 
     // Help toggle
-    const helpBtn = row1.createEl('button', { cls: 'claudian-btn claudian-header-btn', text: '❓ Help' });
+    const helpBtn = row1.createEl('button', { cls: 'claudian-btn claudian-header-btn', text: t('help') });
     helpBtn.addEventListener('click', () => this.toggleHelp());
 
     row1.createDiv({ cls: 'claudian-header-spacer' });
 
     // Provider dropdown
-    row1.createSpan({ cls: 'claudian-header-label', text: 'Provider:' });
+    const providerLabel = row1.createSpan({ cls: 'claudian-header-label', text: t('provider') });
     this.providerSelect = row1.createEl('select', { cls: 'claudian-select claudian-provider-select' });
     this.populateProviderSelect();
     this.providerSelect.addEventListener('change', () => {
@@ -244,7 +273,7 @@ export class ChatView extends ItemView {
     });
 
     // Material dropdown
-    row1.createSpan({ cls: 'claudian-header-label', text: 'Material:' });
+    row1.createSpan({ cls: 'claudian-header-label', text: t('material') });
     this.materialSelect = row1.createEl('select', { cls: 'claudian-select claudian-material-select' });
     this.populateMaterialSelect();
     this.materialSelect.addEventListener('change', () => {
@@ -252,8 +281,8 @@ export class ChatView extends ItemView {
       void this.plugin.saveSettings();
     });
 
-    const addMaterialBtn = row1.createEl('button', { cls: 'claudian-btn claudian-header-btn claudian-material-add-btn', text: '+ Material' });
-    addMaterialBtn.title = 'Add a Markdown file from vault as learning material';
+    const addMaterialBtn = row1.createEl('button', { cls: 'claudian-btn claudian-header-btn claudian-material-add-btn', text: t('addMaterial') });
+    addMaterialBtn.title = t('addMaterial.title');
     addMaterialBtn.addEventListener('click', () => this.openMaterialPicker());
   }
 
@@ -263,7 +292,7 @@ export class ChatView extends ItemView {
     const currentActive = this.plugin.settings.activeProvider;
 
     if (providers.length === 0) {
-      this.providerSelect.createEl('option', { text: '(none configured)', value: '' });
+      this.providerSelect.createEl('option', { text: t('noneConfigured'), value: '' });
       this.providerSelect.disabled = true;
     } else {
       for (const p of providers) {
@@ -281,7 +310,7 @@ export class ChatView extends ItemView {
     this.modelSelect.empty();
     const provider = ProviderRegistry.get(this.plugin.settings.activeProvider);
     if (!provider) {
-      this.modelSelect.createEl('option', { text: '(no provider)', value: '' });
+      this.modelSelect.createEl('option', { text: t('noProvider'), value: '' });
       return;
     }
 
@@ -304,12 +333,12 @@ export class ChatView extends ItemView {
 
   private buildRoleBar(): void {
     this.roleBarEl.empty();
-    this.roleBarEl.createSpan({ cls: 'claudian-role-label', text: 'Role:' });
+    this.roleBarEl.createSpan({ cls: 'claudian-role-label', text: t('role') });
 
     // "None" button (default)
     const noneBtn = this.roleBarEl.createEl('button', {
       cls: `claudian-role-btn${this.activeRole === null ? ' is-active' : ''}`,
-      text: 'None',
+      text: t('role.none'),
     });
     noneBtn.addEventListener('click', () => {
       this.activeRole = null;
@@ -321,8 +350,8 @@ export class ChatView extends ItemView {
       const btn = this.roleBarEl.createEl('button', {
         cls: `claudian-role-btn${this.activeRole?.id === role.id ? ' is-active' : ''}`,
       });
-      btn.createSpan({ text: role.icon + ' ' + role.name });
-      btn.title = role.description;
+      btn.createSpan({ text: role.icon + ' ' + t((role.i18nKey + '.name') as I18nKey) });
+      btn.title = t((role.i18nKey + '.desc') as I18nKey);
       btn.addEventListener('click', () => {
         this.activeRole = this.activeRole?.id === role.id ? null : role;
         this.buildRoleBar();
@@ -339,7 +368,7 @@ export class ChatView extends ItemView {
 
   private populateMaterialSelect(): void {
     this.materialSelect.empty();
-    this.materialSelect.createEl('option', { text: 'None', value: '' });
+    this.materialSelect.createEl('option', { text: t('none'), value: '' });
 
     const confirmed = (this.plugin.settings.learningMaterials || []).filter(m => m.confirmed);
     const activePath = this.plugin.settings.activeMaterialPath;
@@ -349,7 +378,7 @@ export class ChatView extends ItemView {
     for (const material of confirmed) {
       const folder = material.path.includes('/')
         ? material.path.substring(0, material.path.lastIndexOf('/'))
-        : '(root)';
+        : t('root');
       if (!grouped.has(folder)) grouped.set(folder, []);
       grouped.get(folder)!.push(material);
     }
@@ -389,12 +418,12 @@ export class ChatView extends ItemView {
         this.plugin.settings.activeMaterialPath = file.path;
         await this.plugin.saveSettings();
         this.populateMaterialSelect();
-        new Notice(`✅ Confirmed "${file.basename}" as learning material`, 3000);
+        new Notice(t('material.confirmed', { name: file.basename }), 3000);
       } else {
         this.plugin.settings.activeMaterialPath = file.path;
         await this.plugin.saveSettings();
         this.populateMaterialSelect();
-        new Notice(`"${file.basename}" is already a learning material`, 3000);
+        new Notice(t('material.exists', { name: file.basename }), 3000);
       }
       return;
     }
@@ -411,7 +440,7 @@ export class ChatView extends ItemView {
     this.plugin.settings.activeMaterialPath = file.path;
     await this.plugin.saveSettings();
     this.populateMaterialSelect();
-    new Notice(`✅ Added "${file.basename}" as learning material`, 3000);
+    new Notice(t('material.added', { name: file.basename }), 3000);
   }
 
   /** Refresh provider/model/material dropdowns and auto-select first available provider */
@@ -441,7 +470,7 @@ export class ChatView extends ItemView {
     this.historyEl.empty();
 
     const title = this.historyEl.createDiv({ cls: 'claudian-history-title' });
-    title.createSpan({ text: 'Conversation History' });
+    title.createSpan({ text: t('history.title') });
     const closeBtn = title.createEl('button', { cls: 'claudian-btn claudian-header-btn', text: '✕' });
     closeBtn.addEventListener('click', () => { this.historyEl.addClass('is-hidden'); });
 
@@ -452,7 +481,7 @@ export class ChatView extends ItemView {
     }
 
     if (this.conversationMetas.length === 0) {
-      this.historyEl.createDiv({ cls: 'claudian-history-empty', text: 'No conversations yet.' });
+      this.historyEl.createDiv({ cls: 'claudian-history-empty', text: t('history.empty') });
       return;
     }
 
@@ -462,12 +491,12 @@ export class ChatView extends ItemView {
       if (meta.id === this.chatState.conversationId) item.addClass('is-active');
 
       const info = item.createDiv({ cls: 'claudian-history-info' });
-      info.createDiv({ cls: 'claudian-history-item-title', text: meta.title || 'Untitled' });
+      info.createDiv({ cls: 'claudian-history-item-title', text: meta.title || t('history.untitled') });
       const date = new Date(meta.updatedAt).toLocaleString();
       info.createDiv({ cls: 'claudian-history-item-meta', text: `${meta.providerId} · ${date}` });
 
       const actions = item.createDiv({ cls: 'claudian-history-actions' });
-      const loadBtn = actions.createEl('button', { cls: 'claudian-btn claudian-btn-sm', text: 'Load' });
+      const loadBtn = actions.createEl('button', { cls: 'claudian-btn claudian-btn-sm', text: t('history.load') });
       loadBtn.addEventListener('click', () => { void this.loadConversation(meta.id); });
 
       const delBtn = actions.createEl('button', { cls: 'claudian-btn claudian-btn-sm claudian-btn-danger', text: '✕' });
@@ -497,7 +526,7 @@ export class ChatView extends ItemView {
       }
     }
     this.historyEl.addClass('is-hidden');
-    this.statusEl.textContent = `Loaded: ${conv.title}`;
+    this.statusEl.textContent = t('loaded', { title: conv.title });
   }
 
   private toggleHelp(): void {
@@ -512,7 +541,7 @@ export class ChatView extends ItemView {
     this.helpEl.empty();
 
     const title = this.helpEl.createDiv({ cls: 'claudian-help-title' });
-    title.createSpan({ text: 'Claudian 快速上手' });
+    title.createSpan({ text: t('help.title') });
     const closeBtn = title.createEl('button', { cls: 'claudian-btn claudian-header-btn', text: '✕' });
     closeBtn.addEventListener('click', () => { this.helpEl.addClass('is-hidden'); });
 
@@ -528,44 +557,44 @@ export class ChatView extends ItemView {
       }
     };
 
-    addSection('1. 选择学习材料', [
-      '点击 header 中的 <strong>+ Material</strong>，搜索并选择 Vault 中的笔记。',
-      '下拉框会按文件夹分组，选中后所有学习命令会自动引用该材料。',
-      '想不用材料时，选择 <strong>None</strong>。',
+    addSection(t('help.material.heading'), [
+      t('help.material.1'),
+      t('help.material.2'),
+      t('help.material.3'),
     ]);
 
-    addSection('2. 选择学习角色', [
-      'Role 栏可在三种学习角色间切换，默认 None 为通用助手：',
-      '<strong>私人导师</strong>：严格基于学习材料，按「概念拆解 → 规则技巧 → 逻辑训练 → 知识迁移 → 自评检查」五步循环教学，适合系统深入学习。',
-      '<strong>苏格拉底教学(理工)</strong>：不直接给答案，用提问引导你自己推导出结论，适合理科问题求解。',
-      '<strong>语言学习伙伴(文科)</strong>：专注于词汇、语法、翻译、改写和文化背景，适合语言类材料学习。',
+    addSection(t('help.role.heading'), [
+      t('help.role.1'),
+      t('help.role.tutor'),
+      t('help.role.socratic'),
+      t('help.role.language'),
     ]);
 
-    addSection('3. 使用学习命令', [
-      '在输入框输入 <code>/</code> 查看命令，空格后写你的问题。',
-      '<code>/guide 量子力学</code>：生成学习指南',
-      '<code>/quiz 量子力学</code>：苏格拉底式测验',
-      '<code>/confuse 量子力学</code>：多角度解释易混淆概念',
-      '<code>/gap 量子力学</code>：找出知识盲区',
-      '<code>/predict 量子力学</code>：预测考点',
-      '<code>/audio 量子力学</code>：生成播客对话',
-      '<code>/feynman</code>：用费曼技巧检验理解',
-      '<code>/mock 量子力学</code>：模拟考试',
+    addSection(t('help.commands.heading'), [
+      t('help.commands.1'),
+      t('help.commands.guide'),
+      t('help.commands.quiz'),
+      t('help.commands.confuse'),
+      t('help.commands.gap'),
+      t('help.commands.predict'),
+      t('help.commands.audio'),
+      t('help.commands.feynman'),
+      t('help.commands.mock'),
     ]);
 
-    addSection('4. 引用笔记内容', [
-      '输入 <code>@文件名</code> 可引用 Vault 文件作为上下文。',
-      '在编辑器中选中文本 → 右键 → <strong>Claudian: Quote to chat</strong> 可引用到输入框。',
+    addSection(t('help.reference.heading'), [
+      t('help.reference.1'),
+      t('help.reference.2'),
     ]);
 
-    addSection('5. 常用操作', [
-      '<code>/new</code>：新建对话，<code>/clear</code>：清空当前对话',
-      '<code>/history</code>：查看历史对话',
-      'Provider / Model 下拉框可快速切换模型。',
+    addSection(t('help.misc.heading'), [
+      t('help.misc.1'),
+      t('help.misc.2'),
+      t('help.misc.3'),
     ]);
 
     const footer = content.createDiv({ cls: 'claudian-help-footer' });
-    footer.setText('提示：学习命令会携带当前选中的材料和角色设定一起发送给 AI。');
+    footer.setText(t('help.footer'));
   }
 
   private startNewConversation(): void {
@@ -680,7 +709,7 @@ export class ChatView extends ItemView {
   sendText(text: string): void {
     if (this.chatState.isStreaming) return;
     this.inputEl.value = text;
-    this.sendMessage();
+    void this.sendMessage();
   }
 
   /** Insert text into input without sending — for quote/reference */
@@ -722,14 +751,14 @@ export class ChatView extends ItemView {
     this.chatState.addUserMessage(text);
     this.chatState.startAssistantMessage();
 
-    this.statusEl.textContent = 'Sending...';
+    this.statusEl.textContent = t('sending');
 
     this.abortController = new AbortController();
     const settings = this.plugin.settings;
     const provider = ProviderRegistry.get(settings.activeProvider);
 
     if (!provider) {
-      const errMsg = `Provider "${settings.activeProvider}" not configured. Please set your API key in Settings → Claudian API.`;
+      const errMsg = t('providerNotConfigured', { provider: settings.activeProvider });
       this.statusEl.textContent = `Error: ${errMsg}`;
       this.chatState.handleStreamChunk({ type: 'error', content: errMsg });
       return;
@@ -756,7 +785,7 @@ export class ChatView extends ItemView {
         return { role: m.role as 'user' | 'assistant', content: m.content };
       });
 
-    this.statusEl.textContent = `Calling ${settings.activeProvider} (${this.getActiveModel()})...`;
+    this.statusEl.textContent = t('calling', { provider: settings.activeProvider, model: this.getActiveModel() });
 
     const agentLoop = new AgentLoop();
     try {
@@ -774,12 +803,12 @@ export class ChatView extends ItemView {
 
       try { await this.saveConversation(); } catch (e: unknown) { console.warn('[Claudian] Save failed:', e); }
 
-      this.statusEl.textContent = `Done — ${result.iterations} turn(s), ${result.totalUsage.outputTokens} tokens`;
+      this.statusEl.textContent = t('done', { turns: String(result.iterations), tokens: String(result.totalUsage.outputTokens) });
     } catch (error: unknown) {
       console.error('[Claudian] sendMessage error:', error);
       if (this.abortController.signal.aborted) {
         this.chatState.handleStreamChunk({ type: 'done' });
-        this.statusEl.textContent = 'Aborted';
+        this.statusEl.textContent = t('aborted');
       } else {
         const errMsg = error instanceof Error ? error.message : String(error);
         this.statusEl.textContent = `Error: ${errMsg}`;
@@ -792,6 +821,31 @@ export class ChatView extends ItemView {
 
   private async handleSlashCommand(text: string): Promise<boolean> {
     const cmd = text.split(' ')[0].toLowerCase();
+
+    // Learning action commands: call AI, save results to vault
+    if (this.learningDispatcher.isLearningCommand(cmd)) {
+      const args = text.substring(cmd.length).trim();
+      const materialContent = await this.loadActiveMaterialContent();
+      const cmdCtx: CommandContext = {
+        app: this.app,
+        settings: this.plugin.settings,
+        messages: this.chatState.messages,
+        materialContent,
+        activeModel: this.getActiveModel(),
+        maxTokens: this.getMaxTokens(),
+        activeRole: this.activeRole,
+        onStatus: (statusText: string) => { this.statusEl.textContent = statusText; },
+      };
+      this.chatState.addUserMessage(text);
+      this.chatState.startAssistantMessage();
+      const result = await this.learningDispatcher.execute(cmd, args, cmdCtx);
+      if (result) {
+        this.chatState.handleStreamChunk({ type: 'text', content: result });
+        this.chatState.handleStreamChunk({ type: 'done' });
+      }
+      this.statusEl.textContent = '';
+      return true;
+    }
 
     // Learning method commands: wrap user query with method-specific prompt
     if (MethodRegistry.isMethodCommand(cmd)) {
@@ -810,7 +864,7 @@ export class ChatView extends ItemView {
         return true;
       case '/clear':
         this.chatState.clear();
-        this.statusEl.textContent = 'Conversation cleared';
+        this.statusEl.textContent = t('conversationCleared');
         return true;
       case '/history':
         void this.toggleHistory();
@@ -820,12 +874,12 @@ export class ChatView extends ItemView {
         this.chatState.startAssistantMessage();
         const general = BASE_SLASH_COMMANDS
           .filter(c => c.cmd !== '/help')
-          .map(c => `**${c.cmd}** — ${c.desc}`)
+          .map(c => `**${c.cmd}** — ${t(c.descKey)}`)
           .join('\n');
         const learning = MethodRegistry.getCommandList()
-          .map(m => `**${m.command}** — ${m.name}：${m.description}`)
+          .map(m => `**${m.command}** — ${t((m.i18nKey + '.name') as I18nKey)}：${t((m.i18nKey + '.desc') as I18nKey)}`)
           .join('\n');
-        const helpText = `**General commands**\n${general}\n\n**Learning methods**\n${learning}\n\n**@filename** — Reference a vault file as context`;
+        const helpText = `${t('cmd.general')}\n${general}\n\n${t('cmd.learning')}\n${learning}\n\n${t('cmd.atRef')}`;
         this.chatState.handleStreamChunk({ type: 'text', content: helpText });
         this.chatState.handleStreamChunk({ type: 'done' });
         return true;
@@ -849,7 +903,7 @@ export class ChatView extends ItemView {
         return content.substring(0, maxLen) + '\n...(truncated)';
       }
       return content;
-    } catch (e) {
+    } catch (e: unknown) {
       console.warn('[Claudian] Failed to load material:', path, e);
       return undefined;
     }

@@ -5,6 +5,7 @@ export const ExamPredictorMethod: LearningMethod = {
   name: '考试预测器',
   description: '预测考点、构建概念网络、设计高难度综合题',
   command: '/predict',
+  i18nKey: 'method.predict',
   buildPrompt(query: string, materialContent?: string): string {
     return `你是一位命题组专家。请基于${materialContent || "【学习材料】（请在对话中粘贴或 @ 引用相关材料）"}预测考试中可能出现的考点和题目。
 

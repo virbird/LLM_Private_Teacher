@@ -5,6 +5,7 @@ export const MockExamMethod: LearningMethod = {
   name: '模拟考试',
   description: '生成完整试卷（选择+简答+论述）',
   command: '/mock',
+  i18nKey: 'method.mock',
   buildPrompt(query: string, materialContent?: string): string {
     return `你是一位标准化考试出题人。请基于${materialContent || "【学习材料】（请在对话中粘贴或 @ 引用相关材料）"}生成一份完整试卷。
 

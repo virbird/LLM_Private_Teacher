@@ -3,6 +3,8 @@ export interface RolePreset {
   name: string;
   icon: string;
   description: string;
+  /** i18n key for UI display, e.g. 'role.tutor' -> role.tutor.name, role.tutor.desc */
+  i18nKey: string;
   prompt: string;
 }
 
@@ -12,6 +14,7 @@ export const ROLE_PRESETS: RolePreset[] = [
     name: '私人导师',
     icon: '🎓',
     description: '严格基于学习材料，按五步循环系统教学',
+    i18nKey: 'role.tutor',
     prompt: `## Your Role: 私人导师
 
 你是一位严谨且善于启发的私人导师，专门帮助学生系统性地深度掌握特定领域知识。
@@ -61,6 +64,7 @@ export const ROLE_PRESETS: RolePreset[] = [
     name: '苏格拉底教学(理工)',
     icon: '🧠',
     description: 'Guides with questions instead of giving direct answers',
+    i18nKey: 'role.socratic',
     prompt: `## Your Role: Socratic Tutor
 
 You are a patient Socratic tutor. Follow these rules strictly:
@@ -83,6 +87,7 @@ Example interaction:
     id: 'language-partner',
     name: '语言学习伙伴(文科)',
     icon: '🌐',
+    i18nKey: 'role.language',
     description: 'Bilingual companion for reading, vocabulary, and grammar practice',
     prompt: `## Your Role: Language Learning Partner
 

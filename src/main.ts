@@ -7,6 +7,7 @@ import { OpenAICompatProvider } from './core/providers/OpenAICompatProvider';
 import { VaultStorage } from './core/storage/VaultStorage';
 import { SessionStorage } from './core/storage/SessionStorage';
 import { SettingsStorage } from './core/storage/SettingsStorage';
+import { setLocale } from './core/i18n';
 import { ChatView, VIEW_TYPE_CLAUDIAN } from './features/chat/ChatView';
 import { ClaudianSettingsTab } from './features/settings/SettingsTab';
 
@@ -22,6 +23,7 @@ export default class ClaudianPlugin extends Plugin {
     this.settingsStorage = new SettingsStorage(this.vaultStorage);
 
     this.settings = await this.settingsStorage.load();
+    setLocale(this.settings.locale || 'en');
     this.refreshProviders();
 
     this.registerView(VIEW_TYPE_CLAUDIAN, (leaf) => new ChatView(leaf, this));

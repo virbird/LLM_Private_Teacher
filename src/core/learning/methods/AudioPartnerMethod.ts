@@ -5,6 +5,7 @@ export const AudioPartnerMethod: LearningMethod = {
   name: '音频学习伙伴',
   description: '生成双人播客式讲解脚本',
   command: '/podcast',
+  i18nKey: 'method.audio',
   buildPrompt(query: string, materialContent?: string): string {
     return `你是播客双人组的两位主持人（A和B）。请基于${materialContent || "【学习材料】（请在对话中粘贴或 @ 引用相关材料）"}生成一段对话式讲解脚本。
 

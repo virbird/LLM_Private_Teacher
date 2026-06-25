@@ -39,7 +39,7 @@ export const MethodRegistry = {
     return METHOD_BY_COMMAND.has(command);
   },
 
-  getCommandList(): Array<{ command: string; name: string; description: string }> {
-    return METHODS.map(m => ({ command: m.command, name: m.name, description: m.description }));
+  getCommandList(): Array<{ command: string; name: string; description: string; i18nKey: string }> {
+    return METHODS.map(m => ({ command: m.command, name: m.name, description: m.description, i18nKey: m.i18nKey }));
   },
 };

@@ -5,6 +5,7 @@ export const GapFinderMethod: LearningMethod = {
   name: '差距查找器',
   description: '审计知识盲区、逻辑断层和前置依赖',
   command: '/gap',
+  i18nKey: 'method.gap',
   buildPrompt(query: string, materialContent?: string): string {
     return `你是一位严谨的学术审计员。请基于${materialContent || "【学习材料】（请在对话中粘贴或 @ 引用相关材料）"}审计学生的知识掌握情况，找出盲区和断层。
 

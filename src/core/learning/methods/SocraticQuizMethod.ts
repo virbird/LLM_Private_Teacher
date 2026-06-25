@@ -5,6 +5,7 @@ export const SocraticQuizMethod: LearningMethod = {
   name: '苏格拉底式测验',
   description: '多轮出题、等待回答、即时反馈、难度递进',
   command: '/quiz',
+  i18nKey: 'method.quiz',
   buildPrompt(query: string, materialContent?: string): string {
     return `你是一位苏格拉底式考官。请基于${materialContent || "【学习材料】（请在对话中粘贴或 @ 引用相关材料）"}逐题出题，引导学生深度思考。
 

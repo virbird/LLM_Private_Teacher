@@ -31,6 +31,14 @@ export interface LearningMaterial {
   createdAt: string;
 }
 
+export interface LearningConfig {
+  flashcardFolder: string;
+  logFolder: string;
+  mapFolder: string;
+  planFolder: string;
+  quizFolder: string;
+}
+
 export interface PluginSettings {
   activeProvider: ProviderId;
   providers: {
@@ -45,6 +53,7 @@ export interface PluginSettings {
   locale: string;
   learningMaterials: LearningMaterial[];
   activeMaterialPath: string;
+  learning: LearningConfig;
 }
 
 export const DEFAULT_SETTINGS: PluginSettings = {
@@ -78,4 +87,11 @@ export const DEFAULT_SETTINGS: PluginSettings = {
   locale: 'en',
   learningMaterials: [],
   activeMaterialPath: '',
+  learning: {
+    flashcardFolder: 'learning/flashcards',
+    logFolder: 'learning/logs',
+    mapFolder: 'learning/maps',
+    planFolder: 'learning/plans',
+    quizFolder: 'learning/quizzes',
+  },
 };
