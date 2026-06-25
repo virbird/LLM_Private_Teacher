@@ -35,6 +35,20 @@ jobs:
       - name: Upload release assets
         uses: softprops/action-gh-release@v2
         with:
+          body: |
+            ## AI Study Buddy
+
+            AI chat embedded in your vault — direct API calls, works on Desktop and iPad.
+
+            ### Features
+            - Direct API calls to Anthropic Claude, OpenAI, and OpenAI-compatible providers
+            - Learning materials management with folder-grouped dropdown
+            - Three learning roles: Private Tutor, Socratic Tutor (STEM), Language Partner (Humanities)
+            - Eight learning commands: /guide, /quiz, /confuse, /gap, /predict, /audio, /feynman, /mock
+            - File reference with @mention and right-click quote to chat
+            - Inline edit commands: edit, explain, translate, summarize
+            - Conversation history with auto-save
+            - Desktop and iPad compatible
           files: |
             main.js
             manifest.json
