@@ -102,7 +102,7 @@ export class ChatView extends ItemView {
   private modelSelect!: HTMLSelectElement;
   private materialSelect!: HTMLSelectElement;
   private abortController: AbortController | null = null;
-  private activeRole: RolePreset | null = null;
+  private activeRole: RolePreset | null = ROLE_PRESETS[0] ?? null;
   private roleBarEl!: HTMLElement;
   private component!: Component;
   private conversationMetas: ConversationMeta[] = [];
