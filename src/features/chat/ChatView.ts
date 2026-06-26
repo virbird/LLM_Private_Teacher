@@ -527,6 +527,10 @@ export class ChatView extends ItemView {
     }
 
     this.historyEl.removeClass('is-hidden');
+    await this.refreshHistoryList();
+  }
+
+  private async refreshHistoryList(): Promise<void> {
     this.historyEl.empty();
 
     const title = this.historyEl.createDiv({ cls: 'claudian-history-title' });
@@ -560,10 +564,17 @@ export class ChatView extends ItemView {
       loadBtn.addEventListener('click', () => { void this.loadConversation(meta.id); });
 
       const delBtn = actions.createEl('button', { cls: 'claudian-btn claudian-btn-sm claudian-btn-danger', text: '✕' });
-      delBtn.addEventListener('click', () => {
-        void this.plugin.sessionStorage.delete(meta.id).then(() => {
-          void this.toggleHistory();
-        });
+      delBtn.addEventListener('click', async () => {
+        const confirmMsg = t('history.deleteConfirm', { title: meta.title || t('history.untitled') });
+        const ok = window.confirm(confirmMsg);
+        if (!ok) return;
+        await this.plugin.sessionStorage.delete(meta.id);
+        // If deleted the current conversation, start fresh
+        if (meta.id === this.chatState.conversationId) {
+          this.startNewConversation();
+        }
+        // Refresh history list (keep panel open)
+        await this.refreshHistoryList();
       });
     }
   }

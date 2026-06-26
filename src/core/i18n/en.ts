@@ -85,6 +85,7 @@ export const en = {
   'history.empty': 'No conversations yet.',
   'history.untitled': 'Untitled',
   'history.load': 'Load',
+  'history.deleteConfirm': 'Are you sure you want to delete "{title}"? This cannot be undone.',
   'newChat': 'New Chat',
 
   // --- Material picker ---
