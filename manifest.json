@@ -1,7 +1,7 @@
 {
   "id": "claudian-api",
   "name": "AI Study Buddy",
-  "version": "1.0.4",
+  "version": "1.0.5",
   "minAppVersion": "1.7.2",
   "description": "AI chat embedded in your vault — direct API calls, works on Desktop and iPad.",
   "author": "virbird",
