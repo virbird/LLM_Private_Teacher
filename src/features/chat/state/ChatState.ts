@@ -15,11 +15,37 @@ export class ChatState {
   usage: UsageInfo | null = null;
   autoScrollEnabled = true;
   conversationId = '';
+  selectedMessageIds = new Set<string>();
+  private onSelectionChanged?: () => void;
 
   private callbacks: ChatStateCallbacks;
 
   constructor(callbacks: ChatStateCallbacks) {
     this.callbacks = callbacks;
+  }
+
+  setOnSelectionChanged(fn: () => void): void {
+    this.onSelectionChanged = fn;
+  }
+
+  toggleSelection(id: string): void {
+    if (this.selectedMessageIds.has(id)) {
+      this.selectedMessageIds.delete(id);
+    } else {
+      this.selectedMessageIds.add(id);
+    }
+    this.onSelectionChanged?.();
+    this.callbacks.onMessagesChanged();
+  }
+
+  clearSelection(): void {
+    this.selectedMessageIds.clear();
+    this.onSelectionChanged?.();
+    this.callbacks.onMessagesChanged();
+  }
+
+  getSelectedCount(): number {
+    return this.selectedMessageIds.size;
   }
 
   addUserMessage(content: string): ChatMessage {
@@ -114,7 +140,9 @@ export class ChatState {
     this.isStreaming = false;
     this.currentTextContent = '';
     this.usage = null;
+    this.selectedMessageIds.clear();
     this.callbacks.onMessagesChanged();
     this.callbacks.onStreamingChanged(false);
+    this.onSelectionChanged?.();
   }
 }

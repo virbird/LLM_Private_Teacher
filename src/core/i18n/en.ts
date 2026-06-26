@@ -30,6 +30,14 @@ export const en = {
   'loaded': 'Loaded: {title}',
   'providerNotConfigured': 'Provider "{provider}" not configured. Please set your API key in Settings → AI Study Buddy.',
 
+  // --- Save to note ---
+  'note.saveSelected': 'Save selected',
+  'note.saved': 'Saved to {path}',
+  'note.selectedCount': '{count} selected',
+  'note.clear': 'Clear',
+  'note.question': 'Question',
+  'note.answer': 'Answer',
+
   // --- Slash commands ---
   'cmd.new': 'Start a new conversation',
   'cmd.clear': 'Clear current conversation',
@@ -131,6 +139,8 @@ export const en = {
   'settings.systemPrompt.placeholder': 'Custom instructions...',
   'settings.language': 'Language',
   'settings.language.desc': 'Choose the display language for the plugin UI',
+  'settings.noteFolder': 'Note save folder',
+  'settings.noteFolder.desc': 'Folder path for saved Q&A notes',
 
   // --- Roles ---
   'role.tutor.name': 'Private Tutor',
@@ -170,6 +180,7 @@ export const en = {
   'learning.map.saved': '✅ Knowledge map saved → {path}',
   'learning.map.noContent': 'No concepts to map. Provide a topic or have a conversation first.',
   'learning.plan.generating': 'Generating learning plan for {subject}...',
+    'learning.plan.analyzing': 'Analyzing learning context...',
   'learning.plan.saved': '✅ Learning plan saved → {path}',
   'learning.plan.noArgs': 'Please specify a subject. Usage: /plan <subject> [duration]',
   'learning.review.noDue': '🎉 No cards due for review! Great job keeping up.',

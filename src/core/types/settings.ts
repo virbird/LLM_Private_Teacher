@@ -37,6 +37,7 @@ export interface LearningConfig {
   mapFolder: string;
   planFolder: string;
   quizFolder: string;
+  noteFolder: string;
 }
 
 export interface PluginSettings {
@@ -93,5 +94,6 @@ export const DEFAULT_SETTINGS: PluginSettings = {
     mapFolder: 'learning/maps',
     planFolder: 'learning/plans',
     quizFolder: 'learning/quizzes',
+    noteFolder: '学习笔记',
   },
 };

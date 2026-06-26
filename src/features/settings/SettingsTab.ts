@@ -199,6 +199,17 @@ export class ClaudianSettingsTab extends PluginSettingTab {
           await this.plugin.saveSettings();
         }));
 
+    new Setting(containerEl)
+      .setName(t('settings.noteFolder'))
+      .setDesc(t('settings.noteFolder.desc'))
+      .addText(text => text
+        .setPlaceholder('学习笔记')
+        .setValue(this.plugin.settings.learning.noteFolder)
+        .onChange(async (value) => {
+          this.plugin.settings.learning.noteFolder = value.trim() || '学习笔记';
+          await this.plugin.saveSettings();
+        }));
+
   }
 
 

@@ -5,6 +5,7 @@ import { buildFlashcardPrompt, parseFlashcards, type Flashcard } from '../prompt
 import { buildSummaryPrompt } from '../prompt/summary';
 import { buildKnowledgeMapPrompt } from '../prompt/knowledgeMap';
 import { buildPlanPrompt } from '../prompt/plan';
+import { buildPlanSummaryPrompt } from '../prompt/planSummary';
 import { buildQuizPrompt } from '../prompt/quiz';
 import { SpacedRepetitionManager, type ReviewEntry } from './spacedRepetition';
 import { LearningStatsService } from './stats';
@@ -54,18 +55,24 @@ export class LearningCommandDispatcher {
 
   async execute(cmd: string, args: string, ctx: CommandContext): Promise<string | null> {
     try {
+      let result: string | null;
       switch (cmd) {
-        case '/flashcard': return await this.executeFlashcard(args, ctx);
-        case '/summary': return await this.executeSummary(args, ctx);
-        case '/map': return await this.executeMap(args, ctx);
-        case '/plan': return await this.executePlan(args, ctx);
-        case '/review': return await this.executeReview(args, ctx);
-        case '/checkup': return await this.executeCheckup(args, ctx);
-        case '/stats': return await this.executeStats(ctx);
-        case '/mistakes': return await this.executeMistakes(args, ctx);
-        case '/buddy': return await this.executeBuddy(args, ctx);
+        case '/flashcard': result = await this.executeFlashcard(args, ctx); break;
+        case '/summary': result = await this.executeSummary(args, ctx); break;
+        case '/map': result = await this.executeMap(args, ctx); break;
+        case '/plan': result = await this.executePlan(args, ctx); break;
+        case '/review': result = await this.executeReview(args, ctx); break;
+        case '/checkup': result = await this.executeCheckup(args, ctx); break;
+        case '/stats': result = await this.executeStats(ctx); break;
+        case '/mistakes': result = await this.executeMistakes(args, ctx); break;
+        case '/buddy': result = await this.executeBuddy(args, ctx); break;
         default: return null;
       }
+      // Record activity (skip /stats since it's just viewing)
+      if (cmd !== '/stats') {
+        await this.statsService.recordAction(cmd);
+      }
+      return result;
     } catch (e: unknown) {
       const errMsg = e instanceof Error ? e.message : String(e);
       console.error('[LearningCommand]', cmd, errMsg);
@@ -84,6 +91,12 @@ export class LearningCommandDispatcher {
     const cards = parseFlashcards(response);
     if (cards.length === 0) {
       return t('learning.flashcard.parseError');
+    }
+
+    // Set topic on all cards (parseFlashcards doesn't have access to topic)
+    const topicForCards = topic || 'session';
+    for (const card of cards) {
+      card.topic = topicForCards;
     }
 
     // Save to vault
@@ -158,15 +171,30 @@ export class LearningCommandDispatcher {
       return t('learning.plan.noArgs');
     }
 
-    ctx.onStatus?.(t('learning.plan.generating', { subject: args }));
+    // Step 1: Analyze chat history + material to produce a context summary
+    let contextSummary = '';
+    const hasChatHistory = ctx.messages.filter(m => m.content && m.content.trim().length > 0).length > 0;
+    if (hasChatHistory || ctx.materialContent) {
+      ctx.onStatus?.(t('learning.plan.analyzing'));
+      const summaryPrompt = buildPlanSummaryPrompt(ctx.messages, ctx.materialContent);
+      contextSummary = await this.callAI(summaryPrompt, ctx);
+    }
 
-    const prompt = buildPlanPrompt(args, ctx.materialContent);
+    // Step 2: Generate personalized plan using the summary
+    ctx.onStatus?.(t('learning.plan.generating', { subject: args }));
+    const prompt = buildPlanPrompt(args, contextSummary || undefined);
     const response = await this.callAI(prompt, ctx);
 
     const folder = ctx.settings.learning.planFolder;
     const subject = args.split(/\d+\s*(week|day|month)/i)[0].trim() || args.slice(0, 30);
     const safeSubject = subject.replace(/[^a-zA-Z0-9\u4e00-\u9fff-]/g, '_').slice(0, 30);
-    const filePath = `${folder}/${safeSubject}.md`;
+    const now = new Date();
+    const timestamp = now.getFullYear().toString() +
+      String(now.getMonth() + 1).padStart(2, '0') +
+      String(now.getDate()).padStart(2, '0') + '-' +
+      String(now.getHours()).padStart(2, '0') +
+      String(now.getMinutes()).padStart(2, '0');
+    const filePath = `${folder}/${safeSubject}-${timestamp}.md`;
 
     const content = `# Learning Plan: ${args}\n\n${response}\n\n---\n*Generated: ${new Date().toLocaleString()}*`;
     await this.storage.writeVaultFile(filePath, content);

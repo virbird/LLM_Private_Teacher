@@ -1,21 +1,46 @@
 import { MarkdownRenderer, type App, type Component } from 'obsidian';
 import type { ChatMessage } from '../../../core/types/chat';
 
+export interface RenderOptions {
+  selectedIds: Set<string>;
+  onToggle?: (id: string) => void;
+  /** ID of the message currently being streamed (checkbox disabled) */
+  streamingMsgId?: string;
+}
+
 export class MessageRenderer {
   constructor(private app: App, private containerEl: HTMLElement) {}
 
-  renderAll(messages: ChatMessage[], component: Component): void {
+  renderAll(messages: ChatMessage[], component: Component, opts: RenderOptions): void {
     this.containerEl.empty();
     for (const msg of messages) {
-      this.renderMessage(msg, component);
+      this.renderMessage(msg, component, opts);
     }
   }
 
-  renderMessage(msg: ChatMessage, component: Component): HTMLElement {
+  renderMessage(msg: ChatMessage, component: Component, opts: RenderOptions): HTMLElement {
     const msgEl = this.containerEl.createDiv({ cls: `claudian-message claudian-message-${msg.role}` });
 
     const headerEl = msgEl.createDiv({ cls: 'claudian-message-header' });
     headerEl.createSpan({ cls: 'claudian-message-role', text: msg.role === 'user' ? 'You' : 'AI Study Buddy' });
+
+    // Checkbox for assistant messages only
+    if (msg.role === 'assistant') {
+      const cb = document.createElement('input');
+      cb.type = 'checkbox';
+      cb.className = 'claudian-checkbox';
+      cb.checked = opts.selectedIds.has(msg.id);
+      // Disable checkbox while this message is still streaming
+      if (opts.streamingMsgId === msg.id) {
+        cb.disabled = true;
+      }
+      cb.onclick = (e) => {
+        e.stopPropagation();
+        opts.onToggle?.(msg.id);
+      };
+      headerEl.appendChild(cb);
+      console.log('[AI Study Buddy] checkbox created for msg:', msg.id.substring(0, 8));
+    }
 
     const contentEl = msgEl.createDiv({ cls: 'claudian-message-content' });
 
@@ -60,9 +85,9 @@ export class MessageRenderer {
     return msgEl;
   }
 
-  updateLastMessage(msg: ChatMessage, component: Component): void {
+  updateLastMessage(msg: ChatMessage, component: Component, opts: RenderOptions): void {
     const existing = this.containerEl.lastElementChild;
     if (existing) existing.remove();
-    this.renderMessage(msg, component);
+    this.renderMessage(msg, component, opts);
   }
 }

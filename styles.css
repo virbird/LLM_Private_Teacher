@@ -51,6 +51,9 @@
 }
 
 .claudian-message-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
   margin-bottom: 6px;
 }
 
@@ -811,4 +814,41 @@
   font-size: 11px;
   color: var(--text-muted);
   font-style: italic;
+}
+
+/* === Checkbox for assistant messages === */
+.claudian-checkbox {
+  width: 16px;
+  height: 16px;
+  cursor: pointer;
+  accent-color: var(--interactive-accent);
+  flex-shrink: 0;
+}
+
+.claudian-checkbox:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+/* === Floating save bar === */
+.claudian-save-bar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 12px;
+  background: var(--background-secondary);
+  border-top: 1px solid var(--background-modifier-border);
+  box-shadow: 0 -2px 6px rgba(0, 0, 0, 0.08);
+  flex-shrink: 0;
+}
+
+.claudian-save-bar-count {
+  flex: 1;
+  font-size: 12px;
+  color: var(--text-muted);
+}
+
+.claudian-save-bar-btn {
+  padding: 3px 10px;
+  font-size: 12px;
 }
