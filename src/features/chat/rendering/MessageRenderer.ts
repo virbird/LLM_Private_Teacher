@@ -30,7 +30,7 @@ export class MessageRenderer {
 
     // Checkbox for assistant messages only
     if (msg.role === 'assistant') {
-      const cb = document.createElement('input');
+      const cb = msgEl.ownerDocument.createElement('input');
       cb.type = 'checkbox';
       cb.className = 'claudian-checkbox';
       cb.checked = opts.selectedIds.has(msg.id);
