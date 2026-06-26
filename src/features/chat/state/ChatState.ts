@@ -157,6 +157,7 @@ export class ChatState {
     this.selectedMessageIds.clear();
     this.callbacks.onMessagesChanged();
     this.callbacks.onStreamingChanged(false);
+    this.callbacks.onUsageChanged(null);
     this.onSelectionChanged?.();
   }
 }

@@ -283,6 +283,9 @@ export class ChatView extends ItemView {
         if (usage) {
           this.statusEl.textContent = t('tokens', { in: usage.inputTokens.toLocaleString(), out: usage.outputTokens.toLocaleString(), pct: usage.percentage.toFixed(1) });
           this.updateContextIndicator(usage);
+        } else {
+          this.contextIndicatorEl.addClass('is-hidden');
+          this.contextPopupEl.addClass('is-hidden');
         }
       },
     });
@@ -598,6 +601,10 @@ export class ChatView extends ItemView {
     }
     this.historyEl.addClass('is-hidden');
     this.statusEl.textContent = t('loaded', { title: conv.title });
+    // Restore usage stats from saved conversation
+    if (conv.usage) {
+      this.chatState.setUsage(conv.usage);
+    }
   }
 
   private toggleHelp(): void {
@@ -1226,6 +1233,7 @@ export class ChatView extends ItemView {
       model: this.getActiveModel(),
       createdAt: this.chatState.messages[0]?.timestamp ?? Date.now(),
       updatedAt: Date.now(),
+      usage: this.chatState.usage ?? undefined,
     };
     this.chatState.conversationId = conv.id;
     await this.plugin.sessionStorage.save(conv);

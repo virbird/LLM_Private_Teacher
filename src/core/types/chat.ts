@@ -58,4 +58,5 @@ export interface Conversation {
   model: string;
   createdAt: number;
   updatedAt: number;
+  usage?: UsageInfo;
 }
