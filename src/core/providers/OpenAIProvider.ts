@@ -105,6 +105,7 @@ export class OpenAIProvider implements LlmProvider {
       model: request.model,
       messages,
       stream: true,
+      stream_options: { include_usage: true },
     };
 
     if (request.maxTokens) body.max_tokens = request.maxTokens;

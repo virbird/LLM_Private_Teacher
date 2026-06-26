@@ -91,7 +91,7 @@ export class OpenAICompatProvider implements LlmProvider {
       }
     }
 
-    const body: Record<string, unknown> = { model: request.model, messages, stream: true };
+    const body: Record<string, unknown> = { model: request.model, messages, stream: true, stream_options: { include_usage: true } };
     if (request.maxTokens) body.max_tokens = request.maxTokens;
     if (request.tools?.length) body.tools = this.buildToolDefinitions(request.tools);
 

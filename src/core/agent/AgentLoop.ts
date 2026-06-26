@@ -29,6 +29,8 @@ export class AgentLoop {
     const allToolCalls: ToolCallInfo[] = [];
     let totalInputTokens = 0;
     let totalOutputTokens = 0;
+    let totalCacheCreationTokens = 0;
+    let totalCacheReadTokens = 0;
     let iterations = 0;
     let finalText = '';
 
@@ -78,6 +80,8 @@ export class AgentLoop {
           case 'usage':
             totalInputTokens += event.inputTokens;
             totalOutputTokens += event.outputTokens;
+            if (event.cacheCreationTokens) totalCacheCreationTokens += event.cacheCreationTokens;
+            if (event.cacheReadTokens) totalCacheReadTokens += event.cacheReadTokens;
             break;
           case 'message_end':
             stopReason = event.stopReason;
@@ -128,6 +132,8 @@ export class AgentLoop {
       totalUsage: {
         inputTokens: totalInputTokens,
         outputTokens: totalOutputTokens,
+        cacheCreationTokens: totalCacheCreationTokens || undefined,
+        cacheReadTokens: totalCacheReadTokens || undefined,
         contextWindow: maxContext,
         contextTokens: totalInputTokens,
         percentage: maxContext > 0 ? (totalInputTokens / maxContext) * 100 : 0,
