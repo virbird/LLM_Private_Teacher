@@ -38,6 +38,7 @@ export interface ChatMessage {
   toolCalls?: ToolCallDisplay[];
   thinkingBlocks?: string[];
   timestamp: number;
+  isSummary?: boolean;
 }
 
 export interface ToolCallDisplay {

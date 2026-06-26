@@ -852,3 +852,15 @@
   padding: 3px 10px;
   font-size: 12px;
 }
+
+/* === Summary message (compressed context) === */
+.claudian-summary-message {
+  opacity: 0.85;
+  border-left: 3px solid var(--text-accent);
+  background: var(--background-secondary-alt);
+}
+
+.claudian-summary-message .claudian-message-content {
+  font-size: 13px;
+  color: var(--text-muted);
+}

@@ -55,6 +55,7 @@ export interface PluginSettings {
   learningMaterials: LearningMaterial[];
   activeMaterialPath: string;
   learning: LearningConfig;
+  contextCompressionEnabled: boolean;
 }
 
 export const DEFAULT_SETTINGS: PluginSettings = {
@@ -96,4 +97,5 @@ export const DEFAULT_SETTINGS: PluginSettings = {
     quizFolder: 'learning/quizzes',
     noteFolder: '学习笔记',
   },
+  contextCompressionEnabled: true,
 };

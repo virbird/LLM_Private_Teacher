@@ -20,6 +20,8 @@ import { ListFilesTool } from '../../core/tools/tools/ListFilesTool';
 import { SearchTool } from '../../core/tools/tools/SearchTool';
 import { t } from '../../core/i18n';
 import { LearningCommandDispatcher, type CommandContext } from '../../core/learning/LearningCommandDispatcher';
+import { ContextCompressor } from '../../core/agent/ContextCompressor';
+import type { LlmProvider } from '../../core/providers/LlmProvider';
 import type { en as EnMap } from '../../core/i18n/en';
 
 export const VIEW_TYPE_CLAUDIAN = 'claudian-api-view';
@@ -873,6 +875,15 @@ export class ChatView extends ItemView {
       this.clearIdleTimer();
       this.chatState.setUsage(result.totalUsage);
 
+      // Auto context compression when usage exceeds threshold
+      if (this.plugin.settings.contextCompressionEnabled) {
+        const pct = result.totalUsage.percentage;
+        if (pct >= 80) {
+          const keepRounds = pct >= 90 ? 5 : 10;
+          await this.compressContext(provider, keepRounds);
+        }
+      }
+
       try { await this.saveConversation(); } catch (e: unknown) { console.warn('[AI Study Buddy] Save failed:', e); }
 
       this.statusEl.textContent = t('done', { turns: String(result.iterations), tokens: String(result.totalUsage.outputTokens) });
@@ -902,6 +913,39 @@ export class ChatView extends ItemView {
         this.chatState.handleStreamChunk({ type: 'error', content: timeoutMsg });
       }
     }, REQUEST_TIMEOUT_MS);
+  }
+
+  private async compressContext(provider: LlmProvider, keepRounds: number): Promise<void> {
+    const messages = this.chatState.messages;
+    const keepCount = keepRounds * 2;
+
+    // Need at least keepCount + 10 messages to compress meaningfully
+    if (messages.length < keepCount + 10) return;
+
+    this.chatState.isCompressing = true;
+    this.statusEl.textContent = t('context.compressing');
+
+    try {
+      const result = await ContextCompressor.compress(
+        messages,
+        keepCount,
+        provider,
+        this.getActiveModel(),
+      );
+
+      if (result.summary) {
+        this.chatState.compressMessages(result.summary, result.keptMessages);
+        this.statusEl.textContent = t('context.compressed', {
+          before: String(messages.length),
+          after: String(result.keptMessages.length + 1),
+        });
+      }
+    } catch (e: unknown) {
+      console.warn('[AI Study Buddy] Context compression failed:', e);
+      this.statusEl.textContent = t('context.compressFailed');
+    } finally {
+      this.chatState.isCompressing = false;
+    }
   }
 
   private clearIdleTimer(): void {

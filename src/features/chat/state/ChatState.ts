@@ -13,6 +13,7 @@ export class ChatState {
   currentThinkingContent = '';
   currentToolCalls: ToolCallDisplay[] = [];
   usage: UsageInfo | null = null;
+  isCompressing = false;
   autoScrollEnabled = true;
   conversationId = '';
   selectedMessageIds = new Set<string>();
@@ -133,6 +134,19 @@ export class ChatState {
   setUsage(usage: UsageInfo): void {
     this.usage = usage;
     this.callbacks.onUsageChanged(usage);
+  }
+
+  compressMessages(summary: string, keptMessages: ChatMessage[]): void {
+    const summaryMsg: ChatMessage = {
+      id: crypto.randomUUID(),
+      role: 'user',
+      content: `<conversation_summary>\n${summary}\n</conversation_summary>`,
+      timestamp: Date.now(),
+      isSummary: true,
+    };
+    this.messages = [summaryMsg, ...keptMessages];
+    this.usage = null;
+    this.callbacks.onMessagesChanged();
   }
 
   clear(): void {

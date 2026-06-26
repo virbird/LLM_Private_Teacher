@@ -237,4 +237,11 @@ export const en = {
   'learning.buddy.enter': '🤝 Study Buddy mode activated for {topic}! I will play the role of a confused classmate.',
   'learning.buddy.exit': '👋 Study Buddy mode deactivated.',
   'learning.buddy.noArgs': 'Please specify a topic. Usage: /buddy <topic> or /buddy off',
+
+  // --- Context compression ---
+  'context.compressing': '📦 Compressing context...',
+  'context.compressed': '📦 Context compressed ({before} → {after} messages)',
+  'context.compressFailed': '⚠️ Context compression failed, continuing with full conversation',
+  'settings.contextCompression': 'Auto Context Compression',
+  'settings.contextCompression.desc': 'Automatically compress old messages into summary when context exceeds 80%',
 };

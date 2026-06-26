@@ -237,4 +237,11 @@ export const zh = {
   'learning.buddy.enter': '🤝 学习伙伴模式已激活，主题：{topic}！我会扮演一个困惑的同学。',
   'learning.buddy.exit': '👋 学习伙伴模式已关闭。',
   'learning.buddy.noArgs': '请指定主题。用法：/buddy <主题> 或 /buddy off',
+
+  // --- Context compression ---
+  'context.compressing': '📦 压缩上下文中...',
+  'context.compressed': '📦 上下文已压缩 ({before} → {after} 条消息)',
+  'context.compressFailed': '⚠️ 上下文压缩失败，继续使用完整对话',
+  'settings.contextCompression': '自动上下文压缩',
+  'settings.contextCompression.desc': '对话超过 80% 上下文窗口时自动压缩旧消息为摘要',
 };
