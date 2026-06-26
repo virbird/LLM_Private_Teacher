@@ -176,7 +176,13 @@ export class LearningCommandDispatcher {
     const folder = ctx.settings.learning.planFolder;
     const subject = args.split(/\d+\s*(week|day|month)/i)[0].trim() || args.slice(0, 30);
     const safeSubject = subject.replace(/[^a-zA-Z0-9\u4e00-\u9fff-]/g, '_').slice(0, 30);
-    const filePath = `${folder}/${safeSubject}.md`;
+    const now = new Date();
+    const timestamp = now.getFullYear().toString() +
+      String(now.getMonth() + 1).padStart(2, '0') +
+      String(now.getDate()).padStart(2, '0') + '-' +
+      String(now.getHours()).padStart(2, '0') +
+      String(now.getMinutes()).padStart(2, '0');
+    const filePath = `${folder}/${safeSubject}-${timestamp}.md`;
 
     const content = `# Learning Plan: ${args}\n\n${response}\n\n---\n*Generated: ${new Date().toLocaleString()}*`;
     await this.storage.writeVaultFile(filePath, content);
