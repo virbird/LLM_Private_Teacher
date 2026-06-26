@@ -9,7 +9,7 @@ import { ProviderRegistry } from '../../core/providers/ProviderRegistry';
 import { buildSystemPrompt } from '../../core/prompt/systemPrompt';
 import { ROLE_PRESETS, type RolePreset } from '../../core/prompt/roles';
 import { MethodRegistry } from '../../core/learning/MethodRegistry';
-import type { ApiMessage, Conversation } from '../../core/types/chat';
+import type { ApiMessage, Conversation, UsageInfo } from '../../core/types/chat';
 import type { LearningMaterial } from '../../core/types/settings';
 import type { ProviderId } from '../../core/types/provider';
 import type { ConversationMeta } from '../../core/storage/SessionStorage';
@@ -115,6 +115,11 @@ export class ChatView extends ItemView {
   private idleTimer: ReturnType<typeof window.setTimeout> | null = null;
   private saveBarEl!: HTMLElement;
   private streamingMsgId = '';
+  private contextIndicatorEl!: HTMLElement;
+  private contextPopupEl!: HTMLElement;
+  private contextBarFillEl!: HTMLElement;
+  private contextDetailEl!: HTMLElement;
+  private compressNowBtn!: HTMLButtonElement;
 
   constructor(leaf: WorkspaceLeaf, plugin: ClaudianPlugin) {
     super(leaf);
@@ -134,6 +139,7 @@ export class ChatView extends ItemView {
     this.inputEl.placeholder = t('input.placeholder');
     this.stopBtn.setText(t('stop'));
     this.sendBtn.setText(t('send'));
+    this.compressNowBtn.setText(t('context.compressNow'));
     // Refresh save bar labels
     this.saveBarEl.empty();
     const countEl = this.saveBarEl.createSpan({ cls: 'claudian-save-bar-count' });
@@ -225,6 +231,29 @@ export class ChatView extends ItemView {
     const toolbar = inputArea.createDiv({ cls: 'claudian-toolbar' });
     this.statusEl = toolbar.createSpan({ cls: 'claudian-status' });
 
+    // Context usage indicator (clickable)
+    this.contextIndicatorEl = toolbar.createDiv({ cls: 'claudian-context-indicator is-hidden' });
+    this.contextIndicatorEl.createSpan({ cls: 'claudian-context-icon', text: '📊' });
+    const contextBarOuter = this.contextIndicatorEl.createDiv({ cls: 'claudian-context-bar' });
+    this.contextBarFillEl = contextBarOuter.createDiv({ cls: 'claudian-context-bar-fill' });
+    this.contextIndicatorEl.createSpan({ cls: 'claudian-context-pct', text: '0%' });
+    this.contextIndicatorEl.addEventListener('click', () => this.toggleContextPopup());
+
+    // Context detail popup (hidden by default)
+    this.contextPopupEl = inputArea.createDiv({ cls: 'claudian-context-popup is-hidden' });
+    this.contextDetailEl = this.contextPopupEl.createDiv({ cls: 'claudian-context-detail' });
+    const popupActions = this.contextPopupEl.createDiv({ cls: 'claudian-context-actions' });
+    this.compressNowBtn = popupActions.createEl('button', {
+      cls: 'claudian-btn claudian-btn-sm claudian-context-compress-btn',
+      text: t('context.compressNow'),
+    });
+    this.compressNowBtn.addEventListener('click', () => { void this.handleManualCompress(); });
+    const closeBtn = popupActions.createEl('button', {
+      cls: 'claudian-btn claudian-btn-sm',
+      text: t('context.close'),
+    });
+    closeBtn.addEventListener('click', () => this.toggleContextPopup(false));
+
     const btnGroup = toolbar.createDiv({ cls: 'claudian-btn-group' });
 
     this.stopBtn = btnGroup.createEl('button', { cls: 'claudian-btn claudian-btn-stop is-hidden', text: t('stop') });
@@ -253,6 +282,7 @@ export class ChatView extends ItemView {
       onUsageChanged: (usage) => {
         if (usage) {
           this.statusEl.textContent = t('tokens', { in: usage.inputTokens.toLocaleString(), out: usage.outputTokens.toLocaleString(), pct: usage.percentage.toFixed(1) });
+          this.updateContextIndicator(usage);
         }
       },
     });
@@ -913,6 +943,84 @@ export class ChatView extends ItemView {
         this.chatState.handleStreamChunk({ type: 'error', content: timeoutMsg });
       }
     }, REQUEST_TIMEOUT_MS);
+  }
+
+  private updateContextIndicator(usage: UsageInfo): void {
+    const pct = usage.percentage;
+    this.contextIndicatorEl.removeClass('is-hidden');
+    this.contextIndicatorEl.removeClass('claudian-context-low', 'claudian-context-mid', 'claudian-context-high');
+    if (pct >= 80) {
+      this.contextIndicatorEl.addClass('claudian-context-high');
+    } else if (pct >= 50) {
+      this.contextIndicatorEl.addClass('claudian-context-mid');
+    } else {
+      this.contextIndicatorEl.addClass('claudian-context-low');
+    }
+    this.contextBarFillEl.style.width = `${Math.min(pct, 100)}%`;
+    const pctEl = this.contextIndicatorEl.querySelector('.claudian-context-pct');
+    if (pctEl) pctEl.textContent = `${pct.toFixed(0)}%`;
+  }
+
+  private toggleContextPopup(force?: boolean): void {
+    const shouldShow = force ?? this.contextPopupEl.hasClass('is-hidden');
+    if (shouldShow) {
+      this.renderContextDetail();
+      this.contextPopupEl.removeClass('is-hidden');
+    } else {
+      this.contextPopupEl.addClass('is-hidden');
+    }
+  }
+
+  private renderContextDetail(): void {
+    const usage = this.chatState.usage;
+    const msgCount = this.chatState.messages.length;
+    if (!usage) {
+      this.contextDetailEl.innerHTML = t('context.noData');
+      this.compressNowBtn.disabled = true;
+      return;
+    }
+    const pct = usage.percentage;
+    const maxCtx = usage.contextWindow;
+    const inputTok = usage.inputTokens;
+    const outputTok = usage.outputTokens;
+    const cacheRead = usage.cacheReadTokens ?? 0;
+    const cacheCreate = usage.cacheCreationTokens ?? 0;
+
+    this.contextDetailEl.empty();
+    const rows: Array<[string, string]> = [
+      [t('context.detail.messages'), String(msgCount)],
+      [t('context.detail.inputTokens'), inputTok.toLocaleString()],
+      [t('context.detail.outputTokens'), outputTok.toLocaleString()],
+      [t('context.detail.contextUsed'), `${inputTok.toLocaleString()} / ${maxCtx.toLocaleString()}`],
+      [t('context.detail.percentage'), `${pct.toFixed(1)}%`],
+    ];
+    if (cacheRead > 0 || cacheCreate > 0) {
+      rows.push([t('context.detail.cacheRead'), cacheRead.toLocaleString()]);
+      rows.push([t('context.detail.cacheCreate'), cacheCreate.toLocaleString()]);
+    }
+    for (const [label, value] of rows) {
+      const row = this.contextDetailEl.createDiv({ cls: 'claudian-context-detail-row' });
+      row.createSpan({ cls: 'claudian-context-detail-label', text: label });
+      row.createSpan({ cls: 'claudian-context-detail-value', text: value });
+    }
+
+    // Enable/disable manual compress button
+    const minMessages = 30;
+    this.compressNowBtn.disabled = msgCount < minMessages || this.chatState.isCompressing;
+  }
+
+  private async handleManualCompress(): Promise<void> {
+    const provider = ProviderRegistry.get(this.plugin.settings.activeProvider);
+    if (!provider) return;
+    const usage = this.chatState.usage;
+    const pct = usage?.percentage ?? 0;
+    const keepRounds = pct >= 90 ? 5 : 10;
+    this.compressNowBtn.disabled = true;
+    this.compressNowBtn.setText(t('context.compressing'));
+    await this.compressContext(provider, keepRounds);
+    this.compressNowBtn.setText(t('context.compressNow'));
+    // Refresh detail
+    this.renderContextDetail();
   }
 
   private async compressContext(provider: LlmProvider, keepRounds: number): Promise<void> {
