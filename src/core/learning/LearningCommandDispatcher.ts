@@ -55,18 +55,24 @@ export class LearningCommandDispatcher {
 
   async execute(cmd: string, args: string, ctx: CommandContext): Promise<string | null> {
     try {
+      let result: string | null;
       switch (cmd) {
-        case '/flashcard': return await this.executeFlashcard(args, ctx);
-        case '/summary': return await this.executeSummary(args, ctx);
-        case '/map': return await this.executeMap(args, ctx);
-        case '/plan': return await this.executePlan(args, ctx);
-        case '/review': return await this.executeReview(args, ctx);
-        case '/checkup': return await this.executeCheckup(args, ctx);
-        case '/stats': return await this.executeStats(ctx);
-        case '/mistakes': return await this.executeMistakes(args, ctx);
-        case '/buddy': return await this.executeBuddy(args, ctx);
+        case '/flashcard': result = await this.executeFlashcard(args, ctx); break;
+        case '/summary': result = await this.executeSummary(args, ctx); break;
+        case '/map': result = await this.executeMap(args, ctx); break;
+        case '/plan': result = await this.executePlan(args, ctx); break;
+        case '/review': result = await this.executeReview(args, ctx); break;
+        case '/checkup': result = await this.executeCheckup(args, ctx); break;
+        case '/stats': result = await this.executeStats(ctx); break;
+        case '/mistakes': result = await this.executeMistakes(args, ctx); break;
+        case '/buddy': result = await this.executeBuddy(args, ctx); break;
         default: return null;
       }
+      // Record activity (skip /stats since it's just viewing)
+      if (cmd !== '/stats') {
+        await this.statsService.recordAction(cmd);
+      }
+      return result;
     } catch (e: unknown) {
       const errMsg = e instanceof Error ? e.message : String(e);
       console.error('[LearningCommand]', cmd, errMsg);
@@ -85,6 +91,12 @@ export class LearningCommandDispatcher {
     const cards = parseFlashcards(response);
     if (cards.length === 0) {
       return t('learning.flashcard.parseError');
+    }
+
+    // Set topic on all cards (parseFlashcards doesn't have access to topic)
+    const topicForCards = topic || 'session';
+    for (const card of cards) {
+      card.topic = topicForCards;
     }
 
     // Save to vault
