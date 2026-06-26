@@ -115,6 +115,7 @@ export class ChatView extends ItemView {
   private idleTimer: ReturnType<typeof window.setTimeout> | null = null;
   private saveBarEl!: HTMLElement;
   private streamingMsgId = '';
+  private rafPending = false;
   private contextIndicatorEl!: HTMLElement;
   private contextPopupEl!: HTMLElement;
   private contextBarFillEl!: HTMLElement;
@@ -272,7 +273,7 @@ export class ChatView extends ItemView {
 
     // Initialize state
     this.chatState = new ChatState({
-      onMessagesChanged: () => this.renderMessages(),
+      onMessagesChanged: () => this.onMessagesChanged(),
       onStreamingChanged: (streaming) => {
         this.stopBtn.toggleClass('is-hidden', !streaming);
         this.sendBtn.disabled = streaming;
@@ -787,17 +788,46 @@ export class ChatView extends ItemView {
 
   // --- Rendering ---
 
+  /** Throttled message change handler: uses rAF during streaming to batch updates. */
+  private onMessagesChanged(): void {
+    if (this.chatState.isStreaming) {
+      // During streaming: batch with requestAnimationFrame to avoid excessive re-renders
+      if (!this.rafPending) {
+        this.rafPending = true;
+        requestAnimationFrame(() => {
+          this.rafPending = false;
+          this.renderMessages();
+        });
+      }
+    } else {
+      // Non-streaming: render immediately
+      this.rafPending = false;
+      this.renderMessages();
+    }
+  }
+
   private renderMessages(): void {
     const lastAssistant = [...this.chatState.messages].reverse().find(m => m.role === 'assistant');
     const streamingId = this.chatState.isStreaming && lastAssistant ? lastAssistant.id : '';
     this.streamingMsgId = streamingId;
-    const assistantCount = this.chatState.messages.filter(m => m.role === 'assistant').length;
-    console.log(`[AI Study Buddy] renderMessages: ${this.chatState.messages.length} msgs, ${assistantCount} assistant, streaming: ${streamingId || 'none'}`);
-    this.messageRenderer.renderAll(this.chatState.messages, this.component, {
+    const opts = {
       selectedIds: this.chatState.selectedMessageIds,
-      onToggle: (id) => this.chatState.toggleSelection(id),
+      onToggle: (id: string) => this.chatState.toggleSelection(id),
       streamingMsgId: streamingId || undefined,
-    });
+    };
+
+    if (this.chatState.isStreaming && this.chatState.messages.length > 1) {
+      // During streaming: only update the last message element, not the entire conversation
+      this.messageRenderer.updateLastMessage(
+        this.chatState.messages[this.chatState.messages.length - 1],
+        this.component,
+        opts,
+      );
+    } else {
+      // Full render for non-streaming updates (new message, load conversation, etc.)
+      this.messageRenderer.renderAll(this.chatState.messages, this.component, opts);
+    }
+
     if (this.chatState.isStreaming) {
       this.messagesEl.appendChild(this.loadingEl);
     }
@@ -864,15 +894,15 @@ export class ChatView extends ItemView {
 
     // Auto-inject active learning material so the AI tutor can reference it
     const materialPath = this.plugin.settings.activeMaterialPath;
-    console.log('[AI Study Buddy] activeMaterialPath:', materialPath || '(none)');
+    // materialPath used below for auto-injection
     if (materialPath && !resolvedText.includes(materialPath)) {
       const materialContent = await this.loadActiveMaterialContent();
-      console.log('[AI Study Buddy] material loaded:', materialContent ? `${materialContent.length} chars` : 'undefined');
+
       if (materialContent) {
         resolvedText += `\n\n<learning_material path="${materialPath}">\n${materialContent}\n</learning_material>\n\n[IMPORTANT: The above is the user's selected learning material. You MUST base your response on this material content. Do NOT suggest selecting a material — it is already provided.]`;
       }
     } else if (materialPath) {
-      console.log('[AI Study Buddy] material already in @mention, skipping auto-inject');
+
     }
 
     this.chatState.addUserMessage(text);
@@ -916,7 +946,7 @@ export class ChatView extends ItemView {
       });
 
     this.statusEl.textContent = t('calling', { provider: settings.activeProvider, model: this.getActiveModel() });
-    console.log('[AI Study Buddy] sending to API:', apiMessages.length, 'messages, last user msg length:', apiMessages.filter(m => m.role === 'user').slice(-1)[0]?.content?.length ?? 0);
+
 
     // Idle timeout: abort if no stream activity for REQUEST_TIMEOUT_MS
     this.resetIdleTimer();

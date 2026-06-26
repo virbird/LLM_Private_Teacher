@@ -48,6 +48,7 @@ export class AnthropicProvider implements LlmProvider {
 
     let buffer = '';
     const eventQueue: StreamEvent[] = [];
+    let notifyResolve: (() => void) | null = null;
 
     const streamPromise = streamRequest(
       {
@@ -67,15 +68,15 @@ export class AnthropicProvider implements LlmProvider {
         const result = parseClaudeSSE(buffer);
         buffer = result.remaining;
         eventQueue.push(...result.events);
+        if (notifyResolve) { notifyResolve(); notifyResolve = null; }
       },
     );
 
-    // Yield events as they arrive
     let lastYielded = 0;
-    const checkInterval = 20;
     let done = false;
 
-    streamPromise.then(() => { done = true; }).catch(() => { done = true; });
+    streamPromise.then(() => { done = true; if (notifyResolve) { notifyResolve(); notifyResolve = null; } })
+      .catch(() => { done = true; if (notifyResolve) { notifyResolve(); notifyResolve = null; } });
 
     while (!done || lastYielded < eventQueue.length) {
       if (lastYielded < eventQueue.length) {
@@ -83,7 +84,7 @@ export class AnthropicProvider implements LlmProvider {
           yield eventQueue[lastYielded++];
         }
       } else {
-        await new Promise(r => window.setTimeout(r, checkInterval));
+        await new Promise<void>(resolve => { notifyResolve = resolve; });
       }
     }
 
