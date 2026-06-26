@@ -1,4 +1,4 @@
-import { ItemView, Component, SuggestModal, Notice, MarkdownRenderer, TFile, TFolder, type App, type WorkspaceLeaf } from 'obsidian';
+import { ItemView, Component, SuggestModal, Modal, Notice, MarkdownRenderer, TFile, TFolder, type App, type WorkspaceLeaf } from 'obsidian';
 import type ClaudianPlugin from '../../main';
 import { ChatState } from './state/ChatState';
 import { MessageRenderer } from './rendering/MessageRenderer';
@@ -574,16 +574,28 @@ export class ChatView extends ItemView {
   }
 
   private async handleDeleteConversation(meta: ConversationMeta): Promise<void> {
-    // eslint-disable-next-line no-alert
     const confirmMsg = t('history.deleteConfirm', { title: meta.title || t('history.untitled') });
-    // eslint-disable-next-line no-alert
-    const ok = window.confirm(confirmMsg);
+    const ok = await this.showConfirmDialog(confirmMsg);
     if (!ok) return;
     await this.plugin.sessionStorage.delete(meta.id);
     if (meta.id === this.chatState.conversationId) {
       this.startNewConversation();
     }
     await this.refreshHistoryList();
+  }
+
+  private showConfirmDialog(message: string): Promise<boolean> {
+    return new Promise(resolve => {
+      const modal = new Modal(this.app);
+      modal.titleEl.setText(t('history.title'));
+      modal.contentEl.createEl('p', { text: message });
+      const btnContainer = modal.contentEl.createDiv({ cls: 'modal-button-container', attr: { style: 'display: flex; gap: 8px; justify-content: flex-end; margin-top: 16px;' } });
+      const cancelBtn = btnContainer.createEl('button', { text: t('picker.cancel') });
+      cancelBtn.addEventListener('click', () => { modal.close(); resolve(false); });
+      const deleteBtn = btnContainer.createEl('button', { text: t('history.delete'), cls: 'mod-warning' });
+      deleteBtn.addEventListener('click', () => { modal.close(); resolve(true); });
+      modal.open();
+    });
   }
 
   private async loadConversation(id: string): Promise<void> {

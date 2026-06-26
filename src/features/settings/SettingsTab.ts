@@ -29,7 +29,6 @@ export class ClaudianSettingsTab extends PluginSettingTab {
           this.plugin.settings.locale = value;
           setLocale(value);
           await this.plugin.saveSettings();
-          // eslint-disable-next-line deprecation/deprecation
           this.display(); // Re-render settings with new locale
           // Refresh all open ChatView instances
           const leaves = this.plugin.app.workspace.getLeavesOfType('claudian-api-view');

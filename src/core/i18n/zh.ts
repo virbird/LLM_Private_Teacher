@@ -86,6 +86,7 @@ export const zh = {
   'history.untitled': '未命名',
   'history.load': '加载',
   'history.deleteConfirm': '确定要删除对话「{title}」吗？此操作不可撤销。',
+  'history.delete': '删除',
   'newChat': '新对话',
 
   // --- Material picker ---

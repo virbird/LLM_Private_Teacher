@@ -86,6 +86,7 @@ export const en = {
   'history.untitled': 'Untitled',
   'history.load': 'Load',
   'history.deleteConfirm': 'Are you sure you want to delete "{title}"? This cannot be undone.',
+  'history.delete': 'Delete',
   'newChat': 'New Chat',
 
   // --- Material picker ---
