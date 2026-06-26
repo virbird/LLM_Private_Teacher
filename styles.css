@@ -9,6 +9,8 @@
   flex-direction: column;
   height: 100%;
   overflow: hidden;
+  -webkit-user-select: text;
+  user-select: text;
 }
 
 /* Header */
@@ -63,6 +65,8 @@
   font-size: 14px;
   line-height: 1.6;
   color: var(--text-normal);
+  -webkit-user-select: text;
+  user-select: text;
 }
 
 /* Thinking block */
@@ -201,6 +205,8 @@
   resize: none;
   outline: none;
   box-sizing: border-box;
+  -webkit-user-select: text;
+  user-select: text;
 }
 
 .claudian-input:focus {
