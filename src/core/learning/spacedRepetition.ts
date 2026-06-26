@@ -3,6 +3,7 @@ import type { Flashcard } from '../prompt/flashcard';
 
 export interface ReviewEntry {
   cardId: string;
+  subject: string;
   question: string;
   answer: string;
   topic: string;
@@ -112,6 +113,7 @@ export class SpacedRepetitionManager {
       if (existingIds.has(card.id)) continue;
       schedule.push({
         cardId: card.id,
+        subject: card.subject || '未分类',
         question: card.question,
         answer: card.answer,
         topic: card.topic,
@@ -133,13 +135,27 @@ export class SpacedRepetitionManager {
     return added;
   }
 
-  /** Get cards that are due for review today or overdue */
-  async getDueCards(): Promise<ReviewEntry[]> {
+  /** Get cards that are due for review today or overdue, optionally filtered by subject/topic */
+  async getDueCards(subject?: string, topic?: string): Promise<ReviewEntry[]> {
     const schedule = await this.loadSchedule();
     const today = new Date().toISOString().slice(0, 10);
     return schedule
       .filter(e => e.nextReviewDate <= today)
+      .filter(e => !subject || (e.subject || '未分类') === subject)
+      .filter(e => !topic || e.topic === topic)
       .sort((a, b) => a.nextReviewDate.localeCompare(b.nextReviewDate));
+  }
+
+  /** Get a tree of due cards grouped by subject → topic with counts */
+  async getDueTree(): Promise<Record<string, Record<string, number>>> {
+    const due = await this.getDueCards();
+    const tree: Record<string, Record<string, number>> = {};
+    for (const card of due) {
+      const subj = card.subject || '未分类';
+      if (!tree[subj]) tree[subj] = {};
+      tree[subj][card.topic] = (tree[subj][card.topic] || 0) + 1;
+    }
+    return tree;
   }
 
   /** Record a review result and update the schedule */

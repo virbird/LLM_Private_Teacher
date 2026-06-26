@@ -210,6 +210,16 @@ export class ClaudianSettingsTab extends PluginSettingTab {
           await this.plugin.saveSettings();
         }));
 
+    new Setting(containerEl)
+      .setName(t('settings.contextCompression'))
+      .setDesc(t('settings.contextCompression.desc'))
+      .addToggle(toggle => toggle
+        .setValue(this.plugin.settings.contextCompressionEnabled)
+        .onChange(async (value) => {
+          this.plugin.settings.contextCompressionEnabled = value;
+          await this.plugin.saveSettings();
+        }));
+
   }
 
 

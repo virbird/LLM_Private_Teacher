@@ -5,6 +5,7 @@ import type { ReviewEntry } from './spacedRepetition';
 export interface LearningStats {
   flashcards: {
     total: number;
+    bySubject: Record<string, number>;
     byTopic: Record<string, number>;
     byDifficulty: Record<string, number>;
   };
@@ -42,9 +43,12 @@ export class LearningStatsService {
     ]);
 
     // Flashcard stats
+    const bySubject: Record<string, number> = {};
     const byTopic: Record<string, number> = {};
     const byDifficulty: Record<string, number> = {};
     for (const card of flashcards) {
+      const subj = card.subject || '未分类';
+      bySubject[subj] = (bySubject[subj] || 0) + 1;
       const topic = card.topic || 'untagged';
       byTopic[topic] = (byTopic[topic] || 0) + 1;
       byDifficulty[card.difficulty] = (byDifficulty[card.difficulty] || 0) + 1;
@@ -78,7 +82,7 @@ export class LearningStatsService {
     const logDays = new Set(Object.keys(activityLog).filter(k => k.match(/^\d{4}-\d{2}-\d{2}$/))).size;
 
     return {
-      flashcards: { total: flashcards.length, byTopic, byDifficulty },
+      flashcards: { total: flashcards.length, bySubject, byTopic, byDifficulty },
       reviews: { total: reviewSchedule.length, due, reviewed, avgEaseFactor: Math.round(avgEaseFactor * 100) / 100, streak },
       quizzes: { total: quizCount },
       logs: { totalDays: logDays },
@@ -116,7 +120,13 @@ export class LearningStatsService {
     // Flashcard breakdown
     if (stats.flashcards.total > 0) {
       lines.push('## Flashcards');
-      lines.push('By Difficulty:');
+      if (Object.keys(stats.flashcards.bySubject).length > 0) {
+        lines.push('By Subject:');
+        for (const [subj, count] of Object.entries(stats.flashcards.bySubject)) {
+          lines.push(`- ${subj}: ${count}`);
+        }
+      }
+      lines.push('\nBy Difficulty:');
       for (const [diff, count] of Object.entries(stats.flashcards.byDifficulty)) {
         lines.push(`- ${diff}: ${count}`);
       }

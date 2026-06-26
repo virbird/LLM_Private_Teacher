@@ -21,8 +21,12 @@ export class MessageRenderer {
   renderMessage(msg: ChatMessage, component: Component, opts: RenderOptions): HTMLElement {
     const msgEl = this.containerEl.createDiv({ cls: `claudian-message claudian-message-${msg.role}` });
 
+    if (msg.isSummary) {
+      msgEl.addClass('claudian-summary-message');
+    }
+
     const headerEl = msgEl.createDiv({ cls: 'claudian-message-header' });
-    headerEl.createSpan({ cls: 'claudian-message-role', text: msg.role === 'user' ? 'You' : 'AI Study Buddy' });
+    headerEl.createSpan({ cls: 'claudian-message-role', text: msg.isSummary ? '📝 Summary' : (msg.role === 'user' ? 'You' : 'AI Study Buddy') });
 
     // Checkbox for assistant messages only
     if (msg.role === 'assistant') {

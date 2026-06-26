@@ -9,7 +9,7 @@ import { ProviderRegistry } from '../../core/providers/ProviderRegistry';
 import { buildSystemPrompt } from '../../core/prompt/systemPrompt';
 import { ROLE_PRESETS, type RolePreset } from '../../core/prompt/roles';
 import { MethodRegistry } from '../../core/learning/MethodRegistry';
-import type { ApiMessage, Conversation } from '../../core/types/chat';
+import type { ApiMessage, Conversation, UsageInfo } from '../../core/types/chat';
 import type { LearningMaterial } from '../../core/types/settings';
 import type { ProviderId } from '../../core/types/provider';
 import type { ConversationMeta } from '../../core/storage/SessionStorage';
@@ -20,6 +20,8 @@ import { ListFilesTool } from '../../core/tools/tools/ListFilesTool';
 import { SearchTool } from '../../core/tools/tools/SearchTool';
 import { t } from '../../core/i18n';
 import { LearningCommandDispatcher, type CommandContext } from '../../core/learning/LearningCommandDispatcher';
+import { ContextCompressor } from '../../core/agent/ContextCompressor';
+import type { LlmProvider } from '../../core/providers/LlmProvider';
 import type { en as EnMap } from '../../core/i18n/en';
 
 export const VIEW_TYPE_CLAUDIAN = 'claudian-api-view';
@@ -102,7 +104,7 @@ export class ChatView extends ItemView {
   private modelSelect!: HTMLSelectElement;
   private materialSelect!: HTMLSelectElement;
   private abortController: AbortController | null = null;
-  private activeRole: RolePreset | null = null;
+  private activeRole: RolePreset | null = ROLE_PRESETS[0] ?? null;
   private roleBarEl!: HTMLElement;
   private component!: Component;
   private conversationMetas: ConversationMeta[] = [];
@@ -113,6 +115,11 @@ export class ChatView extends ItemView {
   private idleTimer: ReturnType<typeof window.setTimeout> | null = null;
   private saveBarEl!: HTMLElement;
   private streamingMsgId = '';
+  private contextIndicatorEl!: HTMLElement;
+  private contextPopupEl!: HTMLElement;
+  private contextBarFillEl!: HTMLElement;
+  private contextDetailEl!: HTMLElement;
+  private compressNowBtn!: HTMLButtonElement;
 
   constructor(leaf: WorkspaceLeaf, plugin: ClaudianPlugin) {
     super(leaf);
@@ -132,6 +139,7 @@ export class ChatView extends ItemView {
     this.inputEl.placeholder = t('input.placeholder');
     this.stopBtn.setText(t('stop'));
     this.sendBtn.setText(t('send'));
+    this.compressNowBtn.setText(t('context.compressNow'));
     // Refresh save bar labels
     this.saveBarEl.empty();
     const countEl = this.saveBarEl.createSpan({ cls: 'claudian-save-bar-count' });
@@ -223,6 +231,29 @@ export class ChatView extends ItemView {
     const toolbar = inputArea.createDiv({ cls: 'claudian-toolbar' });
     this.statusEl = toolbar.createSpan({ cls: 'claudian-status' });
 
+    // Context usage indicator (clickable)
+    this.contextIndicatorEl = toolbar.createDiv({ cls: 'claudian-context-indicator is-hidden' });
+    this.contextIndicatorEl.createSpan({ cls: 'claudian-context-icon', text: '📊' });
+    const contextBarOuter = this.contextIndicatorEl.createDiv({ cls: 'claudian-context-bar' });
+    this.contextBarFillEl = contextBarOuter.createDiv({ cls: 'claudian-context-bar-fill' });
+    this.contextIndicatorEl.createSpan({ cls: 'claudian-context-pct', text: '0%' });
+    this.contextIndicatorEl.addEventListener('click', () => this.toggleContextPopup());
+
+    // Context detail popup (hidden by default)
+    this.contextPopupEl = inputArea.createDiv({ cls: 'claudian-context-popup is-hidden' });
+    this.contextDetailEl = this.contextPopupEl.createDiv({ cls: 'claudian-context-detail' });
+    const popupActions = this.contextPopupEl.createDiv({ cls: 'claudian-context-actions' });
+    this.compressNowBtn = popupActions.createEl('button', {
+      cls: 'claudian-btn claudian-btn-sm claudian-context-compress-btn',
+      text: t('context.compressNow'),
+    });
+    this.compressNowBtn.addEventListener('click', () => { void this.handleManualCompress(); });
+    const closeBtn = popupActions.createEl('button', {
+      cls: 'claudian-btn claudian-btn-sm',
+      text: t('context.close'),
+    });
+    closeBtn.addEventListener('click', () => this.toggleContextPopup(false));
+
     const btnGroup = toolbar.createDiv({ cls: 'claudian-btn-group' });
 
     this.stopBtn = btnGroup.createEl('button', { cls: 'claudian-btn claudian-btn-stop is-hidden', text: t('stop') });
@@ -251,6 +282,10 @@ export class ChatView extends ItemView {
       onUsageChanged: (usage) => {
         if (usage) {
           this.statusEl.textContent = t('tokens', { in: usage.inputTokens.toLocaleString(), out: usage.outputTokens.toLocaleString(), pct: usage.percentage.toFixed(1) });
+          this.updateContextIndicator(usage);
+        } else {
+          this.contextIndicatorEl.addClass('is-hidden');
+          this.contextPopupEl.addClass('is-hidden');
         }
       },
     });
@@ -495,6 +530,10 @@ export class ChatView extends ItemView {
     }
 
     this.historyEl.removeClass('is-hidden');
+    await this.refreshHistoryList();
+  }
+
+  private async refreshHistoryList(): Promise<void> {
     this.historyEl.empty();
 
     const title = this.historyEl.createDiv({ cls: 'claudian-history-title' });
@@ -528,10 +567,17 @@ export class ChatView extends ItemView {
       loadBtn.addEventListener('click', () => { void this.loadConversation(meta.id); });
 
       const delBtn = actions.createEl('button', { cls: 'claudian-btn claudian-btn-sm claudian-btn-danger', text: '✕' });
-      delBtn.addEventListener('click', () => {
-        void this.plugin.sessionStorage.delete(meta.id).then(() => {
-          void this.toggleHistory();
-        });
+      delBtn.addEventListener('click', async () => {
+        const confirmMsg = t('history.deleteConfirm', { title: meta.title || t('history.untitled') });
+        const ok = window.confirm(confirmMsg);
+        if (!ok) return;
+        await this.plugin.sessionStorage.delete(meta.id);
+        // If deleted the current conversation, start fresh
+        if (meta.id === this.chatState.conversationId) {
+          this.startNewConversation();
+        }
+        // Refresh history list (keep panel open)
+        await this.refreshHistoryList();
       });
     }
   }
@@ -555,6 +601,10 @@ export class ChatView extends ItemView {
     }
     this.historyEl.addClass('is-hidden');
     this.statusEl.textContent = t('loaded', { title: conv.title });
+    // Restore usage stats from saved conversation
+    if (conv.usage) {
+      this.chatState.setUsage(conv.usage);
+    }
   }
 
   private toggleHelp(): void {
@@ -873,6 +923,15 @@ export class ChatView extends ItemView {
       this.clearIdleTimer();
       this.chatState.setUsage(result.totalUsage);
 
+      // Auto context compression when usage exceeds threshold
+      if (this.plugin.settings.contextCompressionEnabled) {
+        const pct = result.totalUsage.percentage;
+        if (pct >= 80) {
+          const keepRounds = pct >= 90 ? 5 : 10;
+          await this.compressContext(provider, keepRounds);
+        }
+      }
+
       try { await this.saveConversation(); } catch (e: unknown) { console.warn('[AI Study Buddy] Save failed:', e); }
 
       this.statusEl.textContent = t('done', { turns: String(result.iterations), tokens: String(result.totalUsage.outputTokens) });
@@ -904,6 +963,117 @@ export class ChatView extends ItemView {
     }, REQUEST_TIMEOUT_MS);
   }
 
+  private updateContextIndicator(usage: UsageInfo): void {
+    const pct = usage.percentage;
+    this.contextIndicatorEl.removeClass('is-hidden');
+    this.contextIndicatorEl.removeClass('claudian-context-low', 'claudian-context-mid', 'claudian-context-high');
+    if (pct >= 80) {
+      this.contextIndicatorEl.addClass('claudian-context-high');
+    } else if (pct >= 50) {
+      this.contextIndicatorEl.addClass('claudian-context-mid');
+    } else {
+      this.contextIndicatorEl.addClass('claudian-context-low');
+    }
+    this.contextBarFillEl.style.width = `${Math.min(pct, 100)}%`;
+    const pctEl = this.contextIndicatorEl.querySelector('.claudian-context-pct');
+    if (pctEl) pctEl.textContent = `${pct.toFixed(0)}%`;
+  }
+
+  private toggleContextPopup(force?: boolean): void {
+    const shouldShow = force ?? this.contextPopupEl.hasClass('is-hidden');
+    if (shouldShow) {
+      this.renderContextDetail();
+      this.contextPopupEl.removeClass('is-hidden');
+    } else {
+      this.contextPopupEl.addClass('is-hidden');
+    }
+  }
+
+  private renderContextDetail(): void {
+    const usage = this.chatState.usage;
+    const msgCount = this.chatState.messages.length;
+    if (!usage) {
+      this.contextDetailEl.innerHTML = t('context.noData');
+      this.compressNowBtn.disabled = true;
+      return;
+    }
+    const pct = usage.percentage;
+    const maxCtx = usage.contextWindow;
+    const inputTok = usage.inputTokens;
+    const outputTok = usage.outputTokens;
+    const cacheRead = usage.cacheReadTokens ?? 0;
+    const cacheCreate = usage.cacheCreationTokens ?? 0;
+
+    this.contextDetailEl.empty();
+    const rows: Array<[string, string]> = [
+      [t('context.detail.messages'), String(msgCount)],
+      [t('context.detail.inputTokens'), inputTok.toLocaleString()],
+      [t('context.detail.outputTokens'), outputTok.toLocaleString()],
+      [t('context.detail.contextUsed'), `${inputTok.toLocaleString()} / ${maxCtx.toLocaleString()}`],
+      [t('context.detail.percentage'), `${pct.toFixed(1)}%`],
+    ];
+    if (cacheRead > 0 || cacheCreate > 0) {
+      rows.push([t('context.detail.cacheRead'), cacheRead.toLocaleString()]);
+      rows.push([t('context.detail.cacheCreate'), cacheCreate.toLocaleString()]);
+    }
+    for (const [label, value] of rows) {
+      const row = this.contextDetailEl.createDiv({ cls: 'claudian-context-detail-row' });
+      row.createSpan({ cls: 'claudian-context-detail-label', text: label });
+      row.createSpan({ cls: 'claudian-context-detail-value', text: value });
+    }
+
+    // Enable/disable manual compress button
+    const minMessages = 30;
+    this.compressNowBtn.disabled = msgCount < minMessages || this.chatState.isCompressing;
+  }
+
+  private async handleManualCompress(): Promise<void> {
+    const provider = ProviderRegistry.get(this.plugin.settings.activeProvider);
+    if (!provider) return;
+    const usage = this.chatState.usage;
+    const pct = usage?.percentage ?? 0;
+    const keepRounds = pct >= 90 ? 5 : 10;
+    this.compressNowBtn.disabled = true;
+    this.compressNowBtn.setText(t('context.compressing'));
+    await this.compressContext(provider, keepRounds);
+    this.compressNowBtn.setText(t('context.compressNow'));
+    // Refresh detail
+    this.renderContextDetail();
+  }
+
+  private async compressContext(provider: LlmProvider, keepRounds: number): Promise<void> {
+    const messages = this.chatState.messages;
+    const keepCount = keepRounds * 2;
+
+    // Need at least keepCount + 10 messages to compress meaningfully
+    if (messages.length < keepCount + 10) return;
+
+    this.chatState.isCompressing = true;
+    this.statusEl.textContent = t('context.compressing');
+
+    try {
+      const result = await ContextCompressor.compress(
+        messages,
+        keepCount,
+        provider,
+        this.getActiveModel(),
+      );
+
+      if (result.summary) {
+        this.chatState.compressMessages(result.summary, result.keptMessages);
+        this.statusEl.textContent = t('context.compressed', {
+          before: String(messages.length),
+          after: String(result.keptMessages.length + 1),
+        });
+      }
+    } catch (e: unknown) {
+      console.warn('[AI Study Buddy] Context compression failed:', e);
+      this.statusEl.textContent = t('context.compressFailed');
+    } finally {
+      this.chatState.isCompressing = false;
+    }
+  }
+
   private clearIdleTimer(): void {
     if (this.idleTimer !== null) {
       window.clearTimeout(this.idleTimer);
@@ -913,6 +1083,22 @@ export class ChatView extends ItemView {
 
   private async handleSlashCommand(text: string): Promise<boolean> {
     const cmd = text.split(' ')[0].toLowerCase();
+    const restArgs = text.substring(cmd.length).trim();
+
+    // /command ? → show detailed help for that command
+    if (restArgs === '?') {
+      const helpKeyName = `cmd.help.${cmd.slice(1)}` as I18nKey;
+      let helpText = t(helpKeyName);
+      // If key not found, t() returns the key string itself
+      if (helpText === helpKeyName) {
+        helpText = t('cmd.help.unknown' as I18nKey);
+      }
+      this.chatState.addUserMessage(text);
+      this.chatState.startAssistantMessage();
+      this.chatState.handleStreamChunk({ type: 'text', content: helpText });
+      this.chatState.handleStreamChunk({ type: 'done' });
+      return true;
+    }
 
     // Learning action commands: call AI, save results to vault
     if (this.learningDispatcher.isLearningCommand(cmd)) {
@@ -1047,6 +1233,7 @@ export class ChatView extends ItemView {
       model: this.getActiveModel(),
       createdAt: this.chatState.messages[0]?.timestamp ?? Date.now(),
       updatedAt: Date.now(),
+      usage: this.chatState.usage ?? undefined,
     };
     this.chatState.conversationId = conv.id;
     await this.plugin.sessionStorage.save(conv);

@@ -40,6 +40,11 @@ export class LearningCommandDispatcher {
   private spacedRepetition: SpacedRepetitionManager;
   private statsService: LearningStatsService;
   private errorNotebook: ErrorNotebook;
+  private reviewSession: {
+    cardId: string | null;
+    subject?: string;
+    topic?: string;
+  } = { cardId: null };
 
   constructor(app: App) {
     this.storage = new LearningStorage(app);
@@ -82,10 +87,24 @@ export class LearningCommandDispatcher {
 
   // --- /flashcard ---
 
-  private async executeFlashcard(topic: string, ctx: CommandContext): Promise<string> {
-    ctx.onStatus?.(t('learning.flashcard.generating', { topic: topic || 'session' }));
+  private async executeFlashcard(args: string, ctx: CommandContext): Promise<string> {
+    // Parse: /flashcard <subject> <topic> or /flashcard <topic>
+    const parts = args.trim().split(/\s+/);
+    let subject = '', topic = '';
+    if (parts.length >= 2) {
+      subject = parts[0];
+      topic = parts.slice(1).join(' ');
+    } else if (parts.length === 1 && parts[0]) {
+      subject = '未分类';
+      topic = parts[0];
+    } else {
+      subject = '未分类';
+      topic = 'session';
+    }
 
-    const prompt = buildFlashcardPrompt(topic, ctx.materialContent);
+    ctx.onStatus?.(t('learning.flashcard.generating', { topic: `${subject} / ${topic}` }));
+
+    const prompt = buildFlashcardPrompt(subject, topic, ctx.materialContent);
     const response = await this.callAI(prompt, ctx);
 
     const cards = parseFlashcards(response);
@@ -93,19 +112,20 @@ export class LearningCommandDispatcher {
       return t('learning.flashcard.parseError');
     }
 
-    // Set topic on all cards (parseFlashcards doesn't have access to topic)
-    const topicForCards = topic || 'session';
+    // Set subject + topic on all cards
     for (const card of cards) {
-      card.topic = topicForCards;
+      card.subject = subject;
+      card.topic = topic;
     }
 
-    // Save to vault
+    // Save to vault (organized by subject subfolder)
     const folder = ctx.settings.learning.flashcardFolder;
     const date = LearningStorage.today();
-    const safeTopic = (topic || 'session').replace(/[^a-zA-Z0-9\u4e00-\u9fff-]/g, '_').slice(0, 30);
-    const filePath = `${folder}/${safeTopic}-${date}.md`;
+    const safeSubject = subject.replace(/[^a-zA-Z0-9\u4e00-\u9fff-]/g, '_').slice(0, 30);
+    const safeTopic = topic.replace(/[^a-zA-Z0-9\u4e00-\u9fff-]/g, '_').slice(0, 30);
+    const filePath = `${folder}/${safeSubject}/${safeTopic}-${date}.md`;
 
-    const content = this.formatFlashcardMarkdown(cards, topic || 'Learning Session', date);
+    const content = this.formatFlashcardMarkdown(cards, subject, topic, date);
     await this.storage.writeVaultFile(filePath, content);
 
     // Update index
@@ -205,58 +225,120 @@ export class LearningCommandDispatcher {
   // --- /review (Spaced Repetition) ---
 
   private async executeReview(args: string, ctx: CommandContext): Promise<string> {
-    // First, auto-add any flashcards from the index that aren't in the schedule
+    // Sync flashcards from index to review schedule
     const allCards = await this.storage.readJson<Flashcard[]>('flashcards/index.json', []);
     if (allCards.length > 0) {
       await this.spacedRepetition.addCards(allCards);
     }
 
-    const dueCards = await this.spacedRepetition.getDueCards();
-    const stats = await this.spacedRepetition.getStats();
+    // Parse args: last token if 0-5 digit → quality rating
+    const tokens = args.trim().split(/\s+/).filter(Boolean);
+    let quality: number | null = null;
+    let subject: string | undefined;
+    let topic: string | undefined;
 
-    if (dueCards.length === 0) {
-      return t('learning.review.noDue') + '\n\n' +
-        t('learning.review.stats', {
-          total: String(stats.total),
-          due: String(stats.due),
-          reviewed: String(stats.reviewed),
-        });
+    const lastToken = tokens[tokens.length - 1];
+    if (lastToken && /^\d$/.test(lastToken)) {
+      quality = parseInt(lastToken);
+      tokens.pop();
     }
+    if (tokens.length >= 1) subject = tokens[0];
+    if (tokens.length >= 2) topic = tokens.slice(1).join(' ');
 
-    // Check if args is a quality rating (0-5) for the first due card
-    const qualityMatch = args.trim().match(/^(\d+)$/);
-    if (qualityMatch) {
-      const quality = parseInt(qualityMatch[1], 10);
-      if (quality >= 0 && quality <= 5 && dueCards.length > 0) {
-        const card = dueCards[0];
-        const updated = await this.spacedRepetition.recordReview(card.cardId, quality);
-        const remaining = dueCards.length - 1;
-        let result = t('learning.review.recorded', {
-          quality: String(quality),
-          nextDate: updated?.nextReviewDate || '',
-          interval: String(updated?.interval || 0),
-        });
-        if (remaining > 0) {
-          result += '\n\n' + this.formatReviewCard(dueCards[1], 1, remaining);
-        } else {
-          result += '\n\n' + t('learning.review.allDone');
-        }
-        return result;
+    // --- Quality rating mode ---
+    if (quality !== null) {
+      // Update session filter if new filter provided
+      if (subject) {
+        this.reviewSession.subject = subject;
+        this.reviewSession.topic = topic;
       }
+      const filterSubject = this.reviewSession.subject;
+      const filterTopic = this.reviewSession.topic;
+
+      // Rate the current session card
+      if (!this.reviewSession.cardId) {
+        return t('learning.review.noActiveCard');
+      }
+      const updated = await this.spacedRepetition.recordReview(this.reviewSession.cardId, quality);
+      if (!updated) {
+        this.reviewSession.cardId = null;
+        return t('learning.review.cardNotFound');
+      }
+
+      const recordedMsg = t('learning.review.recorded', {
+        quality: String(quality),
+        nextDate: updated.nextReviewDate,
+        interval: String(updated.interval),
+      });
+
+      // Get next due card with same filter
+      const dueCards = await this.spacedRepetition.getDueCards(filterSubject, filterTopic);
+      if (dueCards.length === 0) {
+        this.reviewSession.cardId = null;
+        return recordedMsg + '\n\n' + t('learning.review.allDone');
+      }
+
+      this.reviewSession.cardId = dueCards[0].cardId;
+      return recordedMsg + '\n\n' +
+        this.formatReviewCard(dueCards[0], 0, dueCards.length, filterSubject, filterTopic) +
+        '\n\n' + this.formatReviewInstructions();
     }
 
-    // Show the first due card
-    return this.formatReviewCard(dueCards[0], 0, dueCards.length) +
-      '\n\n' + t('learning.review.instructions');
+    // --- Subject tree overview (no args) ---
+    if (!subject) {
+      const tree = await this.spacedRepetition.getDueTree();
+      const totalDue = Object.values(tree).reduce(
+        (sum, topics) => sum + Object.values(topics).reduce((a, b) => a + b, 0), 0
+      );
+      if (totalDue === 0) {
+        const stats = await this.spacedRepetition.getStats();
+        return t('learning.review.noDue') + '\n\n' +
+          t('learning.review.stats', {
+            total: String(stats.total),
+            due: String(stats.due),
+            reviewed: String(stats.reviewed),
+          });
+      }
+      let result = t('learning.review.treeHeader', { count: String(totalDue) }) + '\n\n';
+      for (const [subj, topics] of Object.entries(tree)) {
+        const subjTotal = Object.values(topics).reduce((a, b) => a + b, 0);
+        result += `**${subj}** (${subjTotal} 张)\n`;
+        for (const [tp, count] of Object.entries(topics)) {
+          result += `  - ${tp}: ${count} 张\n`;
+        }
+        result += '\n';
+      }
+      result += t('learning.review.treeEnterHint');
+      return result;
+    }
+
+    // --- Enter subject/topic review ---
+    const dueCards = await this.spacedRepetition.getDueCards(subject, topic);
+    if (dueCards.length === 0) {
+      return t('learning.review.noDueForFilter', { subject, topic: topic || '' });
+    }
+
+    // Set session state
+    this.reviewSession.cardId = dueCards[0].cardId;
+    this.reviewSession.subject = subject;
+    this.reviewSession.topic = topic;
+
+    return this.formatReviewCard(dueCards[0], 0, dueCards.length, subject, topic) +
+      '\n\n' + this.formatReviewInstructions();
   }
 
-  private formatReviewCard(card: ReviewEntry, index: number, total: number): string {
-    const header = `**📇 Review Card ${index + 1}/${total}**`;
+  private formatReviewCard(card: ReviewEntry, index: number, total: number, subject?: string, topic?: string): string {
+    const location = subject ? ` [${subject}${topic ? ' > ' + topic : ''}]` : '';
+    const header = `**📇 Review Card ${index + 1}/${total}**${location}`;
     const question = `### Q: ${card.question}`;
     const answer = `<details><summary>Show Answer</summary>\n\n${card.answer}\n\n</details>`;
     const meta = `*Difficulty: ${card.difficulty} | Tags: ${card.tags?.join(', ') || 'none'}*`;
     const rating = `Rate your recall: \`/review 0\` (forgot) → \`/review 5\` (perfect)`;
     return `${header}\n\n${question}\n\n${answer}\n\n${meta}\n\n${rating}`;
+  }
+
+  private formatReviewInstructions(): string {
+    return t('learning.review.instructions');
   }
 
   // --- /checkup (Quiz) ---
@@ -388,8 +470,8 @@ export class LearningCommandDispatcher {
 
   // --- Flashcard Formatting ---
 
-  private formatFlashcardMarkdown(cards: Flashcard[], topic: string, date: string): string {
-    let md = `# Flashcards: ${topic}\n\n*Generated: ${date}*\n*Cards: ${cards.length}*\n\n---\n\n`;
+  private formatFlashcardMarkdown(cards: Flashcard[], subject: string, topic: string, date: string): string {
+    let md = `# Flashcards: ${subject} / ${topic}\n\n*Generated: ${date}*\n*Cards: ${cards.length}*\n\n---\n\n`;
     for (let i = 0; i < cards.length; i++) {
       const card = cards[i];
       md += `## Q${i + 1}: ${card.question}\n\n`;

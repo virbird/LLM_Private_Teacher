@@ -38,6 +38,7 @@ export interface ChatMessage {
   toolCalls?: ToolCallDisplay[];
   thinkingBlocks?: string[];
   timestamp: number;
+  isSummary?: boolean;
 }
 
 export interface ToolCallDisplay {
@@ -57,4 +58,5 @@ export interface Conversation {
   model: string;
   createdAt: number;
   updatedAt: number;
+  usage?: UsageInfo;
 }

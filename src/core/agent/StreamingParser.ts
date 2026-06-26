@@ -104,6 +104,17 @@ export function parseOpenAISSE(buffer: string): { events: StreamEvent[]; remaini
     }
     try {
       const data = JSON.parse(payload) as Record<string, unknown>;
+
+      // Check for usage data (OpenAI sends this in the final chunk when stream_options.include_usage is true)
+      const usage = data.usage as Record<string, number> | undefined;
+      if (usage) {
+        events.push({
+          type: 'usage',
+          inputTokens: usage.prompt_tokens ?? 0,
+          outputTokens: usage.completion_tokens ?? 0,
+        });
+      }
+
       const choices = data.choices as Array<Record<string, unknown>> | undefined;
       const choice = choices?.[0];
       if (!choice) continue;
