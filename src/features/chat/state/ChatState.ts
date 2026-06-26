@@ -35,11 +35,13 @@ export class ChatState {
       this.selectedMessageIds.add(id);
     }
     this.onSelectionChanged?.();
+    this.callbacks.onMessagesChanged();
   }
 
   clearSelection(): void {
     this.selectedMessageIds.clear();
     this.onSelectionChanged?.();
+    this.callbacks.onMessagesChanged();
   }
 
   getSelectedCount(): number {

@@ -35,7 +35,10 @@ export class MessageRenderer {
       if (opts.streamingMsgId === msg.id) {
         cb.disabled = true;
       }
-      cb.addEventListener('click', () => opts.onToggle?.(msg.id));
+      cb.onclick = (e) => {
+        e.stopPropagation();
+        opts.onToggle?.(msg.id);
+      };
     }
 
     const contentEl = msgEl.createDiv({ cls: 'claudian-message-content' });
