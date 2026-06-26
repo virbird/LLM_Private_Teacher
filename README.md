@@ -12,7 +12,8 @@ An AI learning assistant embedded directly in your Obsidian vault. It makes dire
 - **Learning roles** — Private Tutor, Socratic Tutor (STEM), Language Partner (Humanities)
 - **8 learning method commands** — `/guide`, `/quiz`, `/confuse`, `/gap`, `/predict`, `/audio`, `/feynman`, `/mock`
 - **9 learning action commands** — `/flashcard`, `/summary`, `/map`, `/plan`, `/review`, `/checkup`, `/stats`, `/mistakes`, `/buddy`
-- **Spaced repetition** — SM-2 algorithm schedules flashcard reviews automatically
+- **Subject + topic classification** — flashcards organized by subject (e.g. `/flashcard 物理 量子力学`), review by subject
+- **Spaced repetition** — SM-2 algorithm schedules flashcard reviews automatically, filter by subject/topic
 - **Error notebook** — collects quiz mistakes for targeted review
 - **Learning statistics** — track flashcards, reviews, quizzes, and activity streak
 - **File references** — `@filename` to include vault files in context
@@ -73,11 +74,11 @@ Type `/` in the input box to see commands. These wrap your query with a study-fo
 
 These call AI and save results to your vault:
 
-- `/flashcard quantum mechanics` — generate flashcard Q&A cards (with spaced repetition scheduling)
+- `/flashcard <subject> <topic>` — generate flashcard Q&A cards (e.g. `/flashcard Physics Quantum Mechanics`), organized by subject subfolder
 - `/summary` — generate a summary of the current conversation
 - `/map quantum mechanics` — generate a Mermaid knowledge concept map
-- `/plan quantum mechanics` — generate a phased learning plan
-- `/review` — start a spaced repetition review session for due flashcards
+- `/plan quantum mechanics` — generate a phased learning plan (uses chat history + material for personalization)
+- `/review` — show subject tree of due cards; `/review Physics` starts reviewing; `/review 5` rates current card
 - `/checkup quantum mechanics` — AI quiz with auto-grading and error notebook logging
 - `/stats` — show learning statistics dashboard
 - `/mistakes` — review error notebook entries
