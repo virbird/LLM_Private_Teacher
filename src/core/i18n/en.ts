@@ -180,6 +180,7 @@ export const en = {
   'learning.map.saved': '✅ Knowledge map saved → {path}',
   'learning.map.noContent': 'No concepts to map. Provide a topic or have a conversation first.',
   'learning.plan.generating': 'Generating learning plan for {subject}...',
+    'learning.plan.analyzing': 'Analyzing learning context...',
   'learning.plan.saved': '✅ Learning plan saved → {path}',
   'learning.plan.noArgs': 'Please specify a subject. Usage: /plan <subject> [duration]',
   'learning.review.noDue': '🎉 No cards due for review! Great job keeping up.',

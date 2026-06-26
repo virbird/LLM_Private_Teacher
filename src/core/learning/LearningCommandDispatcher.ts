@@ -5,6 +5,7 @@ import { buildFlashcardPrompt, parseFlashcards, type Flashcard } from '../prompt
 import { buildSummaryPrompt } from '../prompt/summary';
 import { buildKnowledgeMapPrompt } from '../prompt/knowledgeMap';
 import { buildPlanPrompt } from '../prompt/plan';
+import { buildPlanSummaryPrompt } from '../prompt/planSummary';
 import { buildQuizPrompt } from '../prompt/quiz';
 import { SpacedRepetitionManager, type ReviewEntry } from './spacedRepetition';
 import { LearningStatsService } from './stats';
@@ -158,9 +159,18 @@ export class LearningCommandDispatcher {
       return t('learning.plan.noArgs');
     }
 
-    ctx.onStatus?.(t('learning.plan.generating', { subject: args }));
+    // Step 1: Analyze chat history + material to produce a context summary
+    let contextSummary = '';
+    const hasChatHistory = ctx.messages.filter(m => m.content && m.content.trim().length > 0).length > 0;
+    if (hasChatHistory || ctx.materialContent) {
+      ctx.onStatus?.(t('learning.plan.analyzing'));
+      const summaryPrompt = buildPlanSummaryPrompt(ctx.messages, ctx.materialContent);
+      contextSummary = await this.callAI(summaryPrompt, ctx);
+    }
 
-    const prompt = buildPlanPrompt(args, ctx.materialContent);
+    // Step 2: Generate personalized plan using the summary
+    ctx.onStatus?.(t('learning.plan.generating', { subject: args }));
+    const prompt = buildPlanPrompt(args, contextSummary || undefined);
     const response = await this.callAI(prompt, ctx);
 
     const folder = ctx.settings.learning.planFolder;

@@ -1,10 +1,13 @@
 import { parseFlashcards, buildFlashcardPrompt } from '../../../src/core/prompt/flashcard';
 import { buildSummaryPrompt } from '../../../src/core/prompt/summary';
 import { buildKnowledgeMapPrompt } from '../../../src/core/prompt/knowledgeMap';
+import { buildPlanPrompt } from '../../../src/core/prompt/plan';
+import { buildPlanSummaryPrompt } from '../../../src/core/prompt/planSummary';
 import { LearningStorage } from '../../../src/core/learning/LearningStorage';
 import { setLocale } from '../../../src/core/i18n';
 import { t } from '../../../src/core/i18n';
 import { TFile } from 'obsidian';
+import type { ChatMessage } from '../../../src/core/types/chat';
 
 describe('Flashcard prompt builder', () => {
   it('includes topic in prompt', () => {
@@ -251,6 +254,94 @@ describe('LearningStorage', () => {
     const a = LearningStorage.uid();
     const b = LearningStorage.uid();
     expect(a).not.toBe(b);
+  });
+});
+
+describe('Plan prompt builder', () => {
+  it('includes subject in prompt', () => {
+    const prompt = buildPlanPrompt('Quantum Physics');
+    expect(prompt).toContain('Quantum Physics');
+    expect(prompt).toContain('Learning Plan');
+  });
+
+  it('includes context summary when provided', () => {
+    const summary = '【User Knowledge Gaps】\n- Uncertainty principle\n【Planning Suggestions】\n- Focus on wave-particle duality';
+    const prompt = buildPlanPrompt('Physics', summary);
+    expect(prompt).toContain('Context Analysis');
+    expect(prompt).toContain('Uncertainty principle');
+    expect(prompt).toContain('personalize');
+  });
+
+  it('works without context summary', () => {
+    const prompt = buildPlanPrompt('Math');
+    expect(prompt).toContain('Math');
+    expect(prompt).not.toContain('【Context Analysis】');
+  });
+});
+
+describe('Plan summary prompt builder', () => {
+  const makeMsg = (role: 'user' | 'assistant', content: string): ChatMessage => ({
+    id: Math.random().toString(36),
+    role,
+    content,
+    timestamp: Date.now(),
+  });
+
+  it('includes conversation messages in prompt', () => {
+    const msgs = [
+      makeMsg('user', 'What is quantum superposition?'),
+      makeMsg('assistant', 'Superposition is a fundamental principle...'),
+    ];
+    const prompt = buildPlanSummaryPrompt(msgs);
+    expect(prompt).toContain('quantum superposition');
+    expect(prompt).toContain('Superposition is a fundamental');
+    expect(prompt).toContain('Recent Conversation');
+  });
+
+  it('includes material content when provided', () => {
+    const prompt = buildPlanSummaryPrompt([], 'Newton\'s laws of motion...');
+    expect(prompt).toContain('Newton');
+    expect(prompt).toContain('Learning Material');
+  });
+
+  it('includes required output sections', () => {
+    const prompt = buildPlanSummaryPrompt([]);
+    expect(prompt).toContain('User Knowledge Gaps');
+    expect(prompt).toContain('User Strengths');
+    expect(prompt).toContain('Material Key Points');
+    expect(prompt).toContain('Planning Suggestions');
+  });
+
+  it('truncates long messages to 500 chars', () => {
+    const longContent = 'x'.repeat(1000);
+    const msgs = [makeMsg('user', longContent)];
+    const prompt = buildPlanSummaryPrompt(msgs);
+    // The 500-char content should be in the prompt, but not the full 1000 chars
+    expect(prompt).toContain('x'.repeat(500));
+    expect(prompt).not.toContain('x'.repeat(501));
+  });
+
+  it('skips empty messages', () => {
+    const msgs = [
+      makeMsg('user', ''),
+      makeMsg('assistant', '   '),
+      makeMsg('user', 'real question'),
+    ];
+    const prompt = buildPlanSummaryPrompt(msgs);
+    expect(prompt).toContain('real question');
+    expect(prompt).not.toContain('User: \n');
+  });
+
+  it('limits to recent 10 turns (20 messages)', () => {
+    const msgs: ChatMessage[] = [];
+    for (let i = 0; i < 25; i++) {
+      msgs.push(makeMsg('user', `question-${i}`));
+      msgs.push(makeMsg('assistant', `answer-${i}`));
+    }
+    const prompt = buildPlanSummaryPrompt(msgs);
+    // Should include the last 20 messages (question-15 onwards)
+    expect(prompt).toContain('question-24');
+    expect(prompt).not.toContain('question-4');
   });
 });
 

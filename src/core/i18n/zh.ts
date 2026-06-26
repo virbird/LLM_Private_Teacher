@@ -180,6 +180,7 @@ export const zh = {
   'learning.map.saved': '✅ 知识图谱已保存 → {path}',
   'learning.map.noContent': '没有可映射的概念。请提供主题或先进行对话。',
   'learning.plan.generating': '正在生成 {subject} 的学习计划...',
+    'learning.plan.analyzing': '正在分析学习上下文...',
   'learning.plan.saved': '✅ 学习计划已保存 → {path}',
   'learning.plan.noArgs': '请指定主题。用法：/plan <主题> [时长]',
   'learning.review.noDue': '🎉 没有需要复习的卡片！继续保持。',
