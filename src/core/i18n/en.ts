@@ -30,6 +30,14 @@ export const en = {
   'loaded': 'Loaded: {title}',
   'providerNotConfigured': 'Provider "{provider}" not configured. Please set your API key in Settings → AI Study Buddy.',
 
+  // --- Save to note ---
+  'note.saveSelected': 'Save selected',
+  'note.saved': 'Saved to {path}',
+  'note.selectedCount': '{count} selected',
+  'note.clear': 'Clear',
+  'note.question': 'Question',
+  'note.answer': 'Answer',
+
   // --- Slash commands ---
   'cmd.new': 'Start a new conversation',
   'cmd.clear': 'Clear current conversation',
@@ -131,6 +139,8 @@ export const en = {
   'settings.systemPrompt.placeholder': 'Custom instructions...',
   'settings.language': 'Language',
   'settings.language.desc': 'Choose the display language for the plugin UI',
+  'settings.noteFolder': 'Note save folder',
+  'settings.noteFolder.desc': 'Folder path for saved Q&A notes',
 
   // --- Roles ---
   'role.tutor.name': 'Private Tutor',

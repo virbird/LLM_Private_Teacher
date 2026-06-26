@@ -1,4 +1,4 @@
-import { ItemView, Component, SuggestModal, Notice, MarkdownRenderer, TFile, type App, type WorkspaceLeaf } from 'obsidian';
+import { ItemView, Component, SuggestModal, Notice, MarkdownRenderer, TFile, TFolder, type App, type WorkspaceLeaf } from 'obsidian';
 import type ClaudianPlugin from '../../main';
 import { ChatState } from './state/ChatState';
 import { MessageRenderer } from './rendering/MessageRenderer';
@@ -111,6 +111,8 @@ export class ChatView extends ItemView {
   private stopBtn!: HTMLButtonElement;
   private sendBtn!: HTMLButtonElement;
   private idleTimer: ReturnType<typeof window.setTimeout> | null = null;
+  private saveBarEl!: HTMLElement;
+  private streamingMsgId = '';
 
   constructor(leaf: WorkspaceLeaf, plugin: ClaudianPlugin) {
     super(leaf);
@@ -130,6 +132,15 @@ export class ChatView extends ItemView {
     this.inputEl.placeholder = t('input.placeholder');
     this.stopBtn.setText(t('stop'));
     this.sendBtn.setText(t('send'));
+    // Refresh save bar labels
+    this.saveBarEl.empty();
+    const countEl = this.saveBarEl.createSpan({ cls: 'claudian-save-bar-count' });
+    countEl.textContent = t('note.selectedCount', { count: String(this.chatState.getSelectedCount()) });
+    const saveBtn = this.saveBarEl.createEl('button', { cls: 'claudian-btn claudian-btn-send claudian-save-bar-btn', text: t('note.saveSelected') });
+    saveBtn.addEventListener('click', () => { void this.saveSelectedNotes(); });
+    const clearBtn = this.saveBarEl.createEl('button', { cls: 'claudian-btn claudian-save-bar-btn', text: t('note.clear') });
+    clearBtn.addEventListener('click', () => { this.chatState.clearSelection(); });
+    this.updateSaveBar();
   }
 
   async onOpen(): Promise<void> {
@@ -157,6 +168,15 @@ export class ChatView extends ItemView {
 
     // Messages area
     this.messagesEl = container.createDiv({ cls: 'claudian-messages' });
+
+    // Floating save bar (shown when >= 1 message is selected)
+    this.saveBarEl = container.createDiv({ cls: 'claudian-save-bar is-hidden' });
+    const saveBarCountEl = this.saveBarEl.createSpan({ cls: 'claudian-save-bar-count' });
+    saveBarCountEl.textContent = t('note.selectedCount', { count: '0' });
+    const saveBtn = this.saveBarEl.createEl('button', { cls: 'claudian-btn claudian-btn-send claudian-save-bar-btn', text: t('note.saveSelected') });
+    saveBtn.addEventListener('click', () => { void this.saveSelectedNotes(); });
+    const clearBtn = this.saveBarEl.createEl('button', { cls: 'claudian-btn claudian-save-bar-btn', text: t('note.clear') });
+    clearBtn.addEventListener('click', () => { this.chatState.clearSelection(); });
 
     // Input area
     const inputArea = container.createDiv({ cls: 'claudian-input-area' });
@@ -236,6 +256,9 @@ export class ChatView extends ItemView {
     });
 
     this.messageRenderer = new MessageRenderer(this.app, this.messagesEl);
+
+    // Wire up selection-changed callback to update floating save bar
+    this.chatState.setOnSelectionChanged(() => this.updateSaveBar());
   }
 
   private buildHeader(): void {
@@ -699,12 +722,30 @@ export class ChatView extends ItemView {
   // --- Rendering ---
 
   private renderMessages(): void {
-    this.messageRenderer.renderAll(this.chatState.messages, this.component);
+    const lastAssistant = [...this.chatState.messages].reverse().find(m => m.role === 'assistant');
+    const streamingId = this.chatState.isStreaming && lastAssistant ? lastAssistant.id : '';
+    this.streamingMsgId = streamingId;
+    this.messageRenderer.renderAll(this.chatState.messages, this.component, {
+      selectedIds: this.chatState.selectedMessageIds,
+      onToggle: (id) => this.chatState.toggleSelection(id),
+      streamingMsgId: streamingId || undefined,
+    });
     if (this.chatState.isStreaming) {
       this.messagesEl.appendChild(this.loadingEl);
     }
     if (this.chatState.autoScrollEnabled) {
       this.messagesEl.scrollTop = this.messagesEl.scrollHeight;
+    }
+  }
+
+  private updateSaveBar(): void {
+    const count = this.chatState.getSelectedCount();
+    if (count > 0) {
+      this.saveBarEl.removeClass('is-hidden');
+      const countEl = this.saveBarEl.querySelector('.claudian-save-bar-count');
+      if (countEl) countEl.textContent = t('note.selectedCount', { count: String(count) });
+    } else {
+      this.saveBarEl.addClass('is-hidden');
     }
   }
 
@@ -767,7 +808,8 @@ export class ChatView extends ItemView {
     }
 
     this.chatState.addUserMessage(text);
-    this.chatState.startAssistantMessage();
+    const assistantMsg = this.chatState.startAssistantMessage();
+    this.streamingMsgId = assistantMsg.id;
 
     this.statusEl.textContent = t('sending');
 
@@ -1006,6 +1048,78 @@ export class ChatView extends ItemView {
     };
     this.chatState.conversationId = conv.id;
     await this.plugin.sessionStorage.save(conv);
+  }
+
+  private async saveSelectedNotes(): Promise<void> {
+    const messages = this.chatState.messages;
+    const selectedIds = this.chatState.selectedMessageIds;
+    if (selectedIds.size === 0) return;
+
+    // Collect Q&A pairs: each selected assistant message + its preceding user message
+    const qaPairs: Array<{ question: string; answer: string }> = [];
+    for (let i = 0; i < messages.length; i++) {
+      const msg = messages[i];
+      if (msg.role === 'assistant' && selectedIds.has(msg.id)) {
+        // Find the preceding user message
+        let question = '';
+        for (let j = i - 1; j >= 0; j--) {
+          if (messages[j].role === 'user') {
+            question = messages[j].content;
+            break;
+          }
+        }
+        qaPairs.push({ question, answer: msg.content });
+      }
+    }
+
+    if (qaPairs.length === 0) return;
+
+    // Build Markdown with YAML frontmatter
+    const now = new Date();
+    const dateStr = now.toLocaleDateString('zh-CN', { year: 'numeric', month: '2-digit', day: '2-digit' }).replace(/\//g, '-');
+    const timeStr = now.toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit', hour12: false });
+    const fileDateStr = now.getFullYear().toString() +
+      String(now.getMonth() + 1).padStart(2, '0') +
+      String(now.getDate()).padStart(2, '0') + '-' +
+      String(now.getHours()).padStart(2, '0') +
+      String(now.getMinutes()).padStart(2, '0');
+
+    let md = `---\ndate: ${dateStr} ${timeStr}\nsource: AI Study Buddy\ntags: [qa-note]\n---\n`;
+    md += `# 学习笔记 - ${dateStr}\n\n`;
+
+    qaPairs.forEach((pair, idx) => {
+      const qSummary = pair.question.replace(/[\n#*_~`>\[\]]/g, ' ').trim().slice(0, 40) || '(no question)';
+      md += `## Q${idx + 1}: ${qSummary}\n\n`;
+      md += `### ${t('note.question')}\n\n${pair.question || '(empty)'}\n\n`;
+      md += `### ${t('note.answer')}\n\n${pair.answer}\n\n`;
+      if (idx < qaPairs.length - 1) md += '---\n\n';
+    });
+
+    // Ensure folder exists
+    const folderPath = this.plugin.settings.learning.noteFolder;
+    const folder = this.app.vault.getAbstractFileByPath(folderPath);
+    if (!folder) {
+      await this.app.vault.createFolder(folderPath);
+    } else if (!(folder instanceof TFolder)) {
+      // Path exists but is a file, not a folder — use root
+      new Notice('Error: note folder path is a file, not a folder');
+      return;
+    }
+
+    const filePath = `${folderPath}/qa-note-${fileDateStr}.md`;
+    // Avoid overwriting: append suffix if file already exists
+    let finalPath = filePath;
+    let counter = 1;
+    while (this.app.vault.getAbstractFileByPath(finalPath)) {
+      finalPath = `${folderPath}/qa-note-${fileDateStr}-${counter}.md`;
+      counter++;
+    }
+
+    await this.app.vault.create(finalPath, md);
+    new Notice(t('note.saved', { path: finalPath }), 4000);
+
+    // Clear selection and hide bar
+    this.chatState.clearSelection();
   }
 
   async onClose(): Promise<void> {

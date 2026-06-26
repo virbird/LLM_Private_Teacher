@@ -30,6 +30,14 @@ export const zh = {
   'loaded': '已加载: {title}',
   'providerNotConfigured': '提供商 "{provider}" 未配置。请在 Settings → AI Study Buddy 中设置 API Key。',
 
+  // --- Save to note ---
+  'note.saveSelected': '保存所选',
+  'note.saved': '已保存到 {path}',
+  'note.selectedCount': '已选 {count} 条',
+  'note.clear': '清除',
+  'note.question': '问题',
+  'note.answer': '回答',
+
   // --- Slash commands ---
   'cmd.new': '新建对话',
   'cmd.clear': '清空当前对话',
@@ -131,6 +139,8 @@ export const zh = {
   'settings.systemPrompt.placeholder': '自定义指令...',
   'settings.language': '语言',
   'settings.language.desc': '选择插件界面的显示语言',
+  'settings.noteFolder': '笔记保存文件夹',
+  'settings.noteFolder.desc': '保存问答笔记的文件夹路径',
 
   // --- Roles ---
   'role.tutor.name': '私人导师',
