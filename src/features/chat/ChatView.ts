@@ -913,6 +913,22 @@ export class ChatView extends ItemView {
 
   private async handleSlashCommand(text: string): Promise<boolean> {
     const cmd = text.split(' ')[0].toLowerCase();
+    const restArgs = text.substring(cmd.length).trim();
+
+    // /command ? → show detailed help for that command
+    if (restArgs === '?') {
+      const helpKeyName = `cmd.help.${cmd.slice(1)}` as I18nKey;
+      let helpText = t(helpKeyName);
+      // If key not found, t() returns the key string itself
+      if (helpText === helpKeyName) {
+        helpText = t('cmd.help.unknown' as I18nKey);
+      }
+      this.chatState.addUserMessage(text);
+      this.chatState.startAssistantMessage();
+      this.chatState.handleStreamChunk({ type: 'text', content: helpText });
+      this.chatState.handleStreamChunk({ type: 'done' });
+      return true;
+    }
 
     // Learning action commands: call AI, save results to vault
     if (this.learningDispatcher.isLearningCommand(cmd)) {
