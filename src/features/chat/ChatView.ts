@@ -567,19 +567,23 @@ export class ChatView extends ItemView {
       loadBtn.addEventListener('click', () => { void this.loadConversation(meta.id); });
 
       const delBtn = actions.createEl('button', { cls: 'claudian-btn claudian-btn-sm claudian-btn-danger', text: '✕' });
-      delBtn.addEventListener('click', async () => {
-        const confirmMsg = t('history.deleteConfirm', { title: meta.title || t('history.untitled') });
-        const ok = window.confirm(confirmMsg);
-        if (!ok) return;
-        await this.plugin.sessionStorage.delete(meta.id);
-        // If deleted the current conversation, start fresh
-        if (meta.id === this.chatState.conversationId) {
-          this.startNewConversation();
-        }
-        // Refresh history list (keep panel open)
-        await this.refreshHistoryList();
+      delBtn.addEventListener('click', () => {
+        void this.handleDeleteConversation(meta);
       });
     }
+  }
+
+  private async handleDeleteConversation(meta: ConversationMeta): Promise<void> {
+    // eslint-disable-next-line no-alert
+    const confirmMsg = t('history.deleteConfirm', { title: meta.title || t('history.untitled') });
+    // eslint-disable-next-line no-alert
+    const ok = window.confirm(confirmMsg);
+    if (!ok) return;
+    await this.plugin.sessionStorage.delete(meta.id);
+    if (meta.id === this.chatState.conversationId) {
+      this.startNewConversation();
+    }
+    await this.refreshHistoryList();
   }
 
   private async loadConversation(id: string): Promise<void> {
@@ -993,7 +997,8 @@ export class ChatView extends ItemView {
     const usage = this.chatState.usage;
     const msgCount = this.chatState.messages.length;
     if (!usage) {
-      this.contextDetailEl.innerHTML = t('context.noData');
+      this.contextDetailEl.empty();
+      this.contextDetailEl.createDiv({ text: t('context.noData') });
       this.compressNowBtn.disabled = true;
       return;
     }
@@ -1277,7 +1282,7 @@ export class ChatView extends ItemView {
     md += `# 学习笔记 - ${dateStr}\n\n`;
 
     qaPairs.forEach((pair, idx) => {
-      const qSummary = pair.question.replace(/[\n#*_~`>\[\]]/g, ' ').trim().slice(0, 40) || '(no question)';
+      const qSummary = pair.question.replace(/[\n#*_~`>[\]]/g, ' ').trim().slice(0, 40) || '(no question)';
       md += `## Q${idx + 1}: ${qSummary}\n\n`;
       md += `### ${t('note.question')}\n\n${pair.question || '(empty)'}\n\n`;
       md += `### ${t('note.answer')}\n\n${pair.answer}\n\n`;
