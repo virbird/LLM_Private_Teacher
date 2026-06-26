@@ -10,29 +10,42 @@ import { TFile } from 'obsidian';
 import type { ChatMessage } from '../../../src/core/types/chat';
 
 describe('Flashcard prompt builder', () => {
-  it('includes topic in prompt', () => {
-    const prompt = buildFlashcardPrompt('Physics');
+  it('includes subject in prompt', () => {
+    const prompt = buildFlashcardPrompt('Physics', 'Quantum Mechanics');
     expect(prompt).toContain('Physics');
+    expect(prompt).toContain('Quantum Mechanics');
     expect(prompt).toContain('flashcard');
   });
 
   it('includes material content when provided', () => {
-    const prompt = buildFlashcardPrompt('Math', 'E=mc2 is a formula');
+    const prompt = buildFlashcardPrompt('Math', 'Calculus', 'E=mc2 is a formula');
     expect(prompt).toContain('E=mc2');
     expect(prompt).toContain('Learning Material');
   });
 
   it('uses default topic line when no topic given', () => {
-    const prompt = buildFlashcardPrompt('');
+    const prompt = buildFlashcardPrompt('', '');
     expect(prompt).toContain('recent learning conversation');
   });
 
   it('specifies output format with card tags', () => {
-    const prompt = buildFlashcardPrompt('test');
+    const prompt = buildFlashcardPrompt('test', 'topic');
     expect(prompt).toContain('<card>');
     expect(prompt).toContain('<q>');
     expect(prompt).toContain('<a>');
     expect(prompt).toContain('<difficulty>');
+  });
+
+  it('includes Subject line when subject provided', () => {
+    const prompt = buildFlashcardPrompt('物理', '量子力学');
+    expect(prompt).toContain('Subject: 物理');
+    expect(prompt).toContain('Topic: 量子力学');
+  });
+
+  it('omits Subject line when subject is empty', () => {
+    const prompt = buildFlashcardPrompt('', '量子力学');
+    expect(prompt).not.toContain('Subject:');
+    expect(prompt).toContain('Topic: 量子力学');
   });
 });
 
@@ -50,6 +63,7 @@ describe('Flashcard parser', () => {
     expect(cards[0].answer).toContain('speed of light');
     expect(cards[0].difficulty).toBe('easy');
     expect(cards[0].tags).toEqual(['physics', 'energy']);
+    expect(cards[0].subject).toBe('');
   });
 
   it('parses multiple cards', () => {

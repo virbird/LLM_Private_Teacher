@@ -1,5 +1,6 @@
 export interface Flashcard {
   id: string;
+  subject: string;
   question: string;
   answer: string;
   topic: string;
@@ -9,7 +10,8 @@ export interface Flashcard {
 }
 
 /** Build a prompt that asks the AI to generate flashcards */
-export function buildFlashcardPrompt(topic: string, materialContent?: string): string {
+export function buildFlashcardPrompt(subject: string, topic: string, materialContent?: string): string {
+  const subjectLine = subject ? `Subject: ${subject}` : '';
   const topicLine = topic ? `Topic: ${topic}` : 'Topic: Based on recent learning conversation';
   const materialSection = materialContent
     ? `\n\n【Learning Material】\n${materialContent}`
@@ -17,7 +19,7 @@ export function buildFlashcardPrompt(topic: string, materialContent?: string): s
 
   return `You are a flashcard generation expert. Generate 8-12 high-quality Q&A flashcards.
 
-${topicLine}${materialSection}
+${subjectLine ? subjectLine + '\n' : ''}${topicLine}${materialSection}
 
 【Requirements】
 1. Each card should test ONE specific concept or fact
@@ -56,6 +58,7 @@ export function parseFlashcards(response: string): Flashcard[] {
         id: Date.now().toString(36) + Math.random().toString(36).slice(2, 8) + cards.length,
         question,
         answer,
+        subject: '',
         topic: '',
         difficulty: ['easy', 'medium', 'hard'].includes(difficulty) ? difficulty : 'medium',
         tags,
