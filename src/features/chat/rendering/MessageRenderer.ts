@@ -26,10 +26,9 @@ export class MessageRenderer {
 
     // Checkbox for assistant messages only
     if (msg.role === 'assistant') {
-      const cb = headerEl.createEl('input', {
-        type: 'checkbox',
-        cls: 'claudian-checkbox',
-      });
+      const cb = document.createElement('input');
+      cb.type = 'checkbox';
+      cb.className = 'claudian-checkbox';
       cb.checked = opts.selectedIds.has(msg.id);
       // Disable checkbox while this message is still streaming
       if (opts.streamingMsgId === msg.id) {
@@ -39,6 +38,8 @@ export class MessageRenderer {
         e.stopPropagation();
         opts.onToggle?.(msg.id);
       };
+      headerEl.appendChild(cb);
+      console.log('[AI Study Buddy] checkbox created for msg:', msg.id.substring(0, 8));
     }
 
     const contentEl = msgEl.createDiv({ cls: 'claudian-message-content' });

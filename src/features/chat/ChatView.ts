@@ -725,6 +725,8 @@ export class ChatView extends ItemView {
     const lastAssistant = [...this.chatState.messages].reverse().find(m => m.role === 'assistant');
     const streamingId = this.chatState.isStreaming && lastAssistant ? lastAssistant.id : '';
     this.streamingMsgId = streamingId;
+    const assistantCount = this.chatState.messages.filter(m => m.role === 'assistant').length;
+    console.log(`[AI Study Buddy] renderMessages: ${this.chatState.messages.length} msgs, ${assistantCount} assistant, streaming: ${streamingId || 'none'}`);
     this.messageRenderer.renderAll(this.chatState.messages, this.component, {
       selectedIds: this.chatState.selectedMessageIds,
       onToggle: (id) => this.chatState.toggleSelection(id),
