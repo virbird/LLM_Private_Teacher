@@ -43,7 +43,6 @@ export class MessageRenderer {
         opts.onToggle?.(msg.id);
       };
       headerEl.appendChild(cb);
-      console.log('[AI Study Buddy] checkbox created for msg:', msg.id.substring(0, 8));
     }
 
     const contentEl = msgEl.createDiv({ cls: 'claudian-message-content' });
@@ -89,9 +88,22 @@ export class MessageRenderer {
     return msgEl;
   }
 
+  /**
+   * Replace only the last message element, leaving all other messages intact.
+   * During streaming, the loading element may be the last child; we skip it
+   * to find the actual last message.
+   */
   updateLastMessage(msg: ChatMessage, component: Component, opts: RenderOptions): void {
-    const existing = this.containerEl.lastElementChild;
-    if (existing) existing.remove();
+    const children = Array.from(this.containerEl.children) as HTMLElement[];
+    // Find the last .claudian-message element (skip loading indicator)
+    for (let i = children.length - 1; i >= 0; i--) {
+      if (children[i].classList.contains('claudian-message')) {
+        children[i].remove();
+        break;
+      }
+    }
+    // renderMessage appends to containerEl end.
+    // After this, renderMessages() will move the loading element to the end via appendChild.
     this.renderMessage(msg, component, opts);
   }
 }

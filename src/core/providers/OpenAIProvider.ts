@@ -46,6 +46,7 @@ export class OpenAIProvider implements LlmProvider {
     const body = this.buildRequestBody(request);
     let buffer = '';
     const eventQueue: StreamEvent[] = [];
+    let notifyResolve: (() => void) | null = null;
 
     const streamPromise = streamRequest(
       {
@@ -63,18 +64,20 @@ export class OpenAIProvider implements LlmProvider {
         const result = parseOpenAISSE(buffer);
         buffer = result.remaining;
         eventQueue.push(...result.events);
+        if (notifyResolve) { notifyResolve(); notifyResolve = null; }
       },
     );
 
     let lastYielded = 0;
     let done = false;
-    streamPromise.then(() => { done = true; }).catch(() => { done = true; });
+    streamPromise.then(() => { done = true; if (notifyResolve) { notifyResolve(); notifyResolve = null; } })
+      .catch(() => { done = true; if (notifyResolve) { notifyResolve(); notifyResolve = null; } });
 
     while (!done || lastYielded < eventQueue.length) {
       if (lastYielded < eventQueue.length) {
         while (lastYielded < eventQueue.length) yield eventQueue[lastYielded++];
       } else {
-        await new Promise(r => window.setTimeout(r, 20));
+        await new Promise<void>(resolve => { notifyResolve = resolve; });
       }
     }
 
