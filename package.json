@@ -1,6 +1,6 @@
 {
   "name": "claudian-api",
-  "version": "1.0.7",
+  "version": "1.0.8",
   "description": "AI Study Buddy - AI learning assistant plugin for Obsidian with direct LLM API calls (Desktop + iPad)",
   "main": "main.js",
   "scripts": {
