@@ -112,7 +112,7 @@ export class ChatView extends ItemView {
   private learningDispatcher: LearningCommandDispatcher;
   private stopBtn!: HTMLButtonElement;
   private sendBtn!: HTMLButtonElement;
-  private idleTimer: ReturnType<typeof setTimeout> | null = null;
+  private idleTimer: number | null = null;
   private saveBarEl!: HTMLElement;
   private streamingMsgId = '';
   private rafPending = false;
@@ -800,7 +800,7 @@ export class ChatView extends ItemView {
       // During streaming: batch with requestAnimationFrame to avoid excessive re-renders
       if (!this.rafPending) {
         this.rafPending = true;
-        requestAnimationFrame(() => {
+        window.requestAnimationFrame(() => {
           this.rafPending = false;
           this.renderMessages();
         });
@@ -908,7 +908,7 @@ export class ChatView extends ItemView {
         resolvedText += `\n\n<learning_material path="${materialPath}">\n${materialContent}\n</learning_material>\n\n[IMPORTANT: The above is the user's selected learning material. You MUST base your response on this material content. Do NOT suggest selecting a material — it is already provided.]`;
       }
     } else if (materialPath) {
-
+      // Material path set but content already included or unavailable — no action needed
     }
 
     this.chatState.addUserMessage(text);
@@ -1005,7 +1005,7 @@ export class ChatView extends ItemView {
 
   private resetIdleTimer(): void {
     this.clearIdleTimer();
-    this.idleTimer = setTimeout(() => {
+    this.idleTimer = window.setTimeout(() => {
       if (this.abortController && !this.abortController.signal.aborted) {
         this.abortController.abort();
         const timeoutMsg = t('request.timeout', { seconds: String(REQUEST_TIMEOUT_MS / 1000) });
@@ -1129,7 +1129,7 @@ export class ChatView extends ItemView {
 
   private clearIdleTimer(): void {
     if (this.idleTimer !== null) {
-      clearTimeout(this.idleTimer);
+      window.clearTimeout(this.idleTimer);
       this.idleTimer = null;
     }
   }

@@ -1,3 +1,4 @@
+// eslint-disable-next-line obsidianmd/no-nodejs-modules -- Required for typing CLI subprocess stdio (Electron environment)
 import type { Readable } from 'stream';
 
 import type { ProviderCapabilities, ModelInfo } from '../../types/provider';
@@ -110,7 +111,7 @@ export class ClaudeCliProvider implements LlmProvider {
     let buffer = '';
     let sawMessageEnd = false;
 
-    for await (const chunk of stdout) {
+    for await (const chunk of stdout as AsyncIterable<Buffer>) {
       buffer += chunk.toString();
       const lines = buffer.split('\n');
       buffer = lines.pop() ?? '';
@@ -118,7 +119,7 @@ export class ClaudeCliProvider implements LlmProvider {
       for (const line of lines) {
         if (!line.trim()) continue;
         try {
-          const msg = JSON.parse(line);
+          const msg = JSON.parse(line) as Record<string, unknown>;
           for (const event of this.mapCliMessageToEvents(msg)) {
             if (event.type === 'message_end') sawMessageEnd = true;
             yield event;
@@ -132,7 +133,7 @@ export class ClaudeCliProvider implements LlmProvider {
     // Process any remaining buffered content
     if (buffer.trim()) {
       try {
-        const msg = JSON.parse(buffer);
+        const msg = JSON.parse(buffer) as Record<string, unknown>;
         for (const event of this.mapCliMessageToEvents(msg)) {
           if (event.type === 'message_end') sawMessageEnd = true;
           yield event;

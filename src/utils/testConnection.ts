@@ -1,4 +1,5 @@
 import { requestUrl } from 'obsidian';
+// eslint-disable-next-line obsidianmd/no-nodejs-modules -- Required for CLI version check in testCli function
 import { execSync } from 'child_process';
 import { CliResolver } from '../core/providers/cli/CliResolver';
 

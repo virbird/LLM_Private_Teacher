@@ -1,3 +1,4 @@
+// eslint-disable-next-line obsidianmd/no-nodejs-modules -- Required for typing CLI subprocess stdio (Electron environment)
 import type { Readable } from 'stream';
 
 import type { ProviderCapabilities, ModelInfo } from '../../types/provider';
@@ -111,7 +112,7 @@ export class PiCliProvider implements LlmProvider {
   private async *readJsonlStream(stdout: Readable): AsyncGenerator<StreamEvent> {
     let sawMessageEnd = false;
 
-    for await (const chunk of stdout) {
+    for await (const chunk of stdout as AsyncIterable<Buffer>) {
       this.lineBuffer += chunk.toString();
       const lines = this.lineBuffer.split('\n');
       this.lineBuffer = lines.pop() ?? '';

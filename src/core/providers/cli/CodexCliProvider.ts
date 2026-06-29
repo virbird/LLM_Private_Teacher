@@ -1,4 +1,4 @@
-import type { ProviderCapabilities, ModelInfo, ProviderId } from '../../types/provider';
+import type { ProviderCapabilities, ModelInfo } from '../../types/provider';
 import type { ProviderToolDefinition, NormalizedToolCall } from '../../types/tools';
 import type { LlmProvider, ChatRequest, StreamEvent } from '../LlmProvider';
 import { CliSubprocess } from './CliSubprocess';

@@ -1,3 +1,4 @@
+// eslint-disable-next-line obsidianmd/no-nodejs-modules -- Required for reading JSON-RPC lines from CLI subprocess stdout
 import { createInterface, type Interface } from 'readline';
 
 import type { CliSubprocess } from './CliSubprocess';
@@ -5,7 +6,7 @@ import type { CliSubprocess } from './CliSubprocess';
 type PendingRequest = {
   resolve: (value: unknown) => void;
   reject: (error: Error) => void;
-  timer: ReturnType<typeof setTimeout>;
+  timer: number;
 };
 
 type NotificationHandler = (params: unknown) => void;
@@ -43,19 +44,19 @@ export class JsonRpcTransport {
         params: params ?? {},
       });
 
-      const timer = setTimeout(() => {
+      const timer = window.setTimeout(() => {
         this.pending.delete(id);
         reject(new Error(`JSON-RPC request '${method}' timed out after ${timeoutMs}ms`));
       }, timeoutMs);
 
       this.pending.set(id, {
         resolve: (value) => {
-          clearTimeout(timer);
+          window.clearTimeout(timer);
           this.pending.delete(id);
           resolve(value as T);
         },
         reject: (error) => {
-          clearTimeout(timer);
+          window.clearTimeout(timer);
           this.pending.delete(id);
           reject(error);
         },
@@ -65,7 +66,7 @@ export class JsonRpcTransport {
       try {
         this.subprocess.stdin.write(msg + '\n');
       } catch (error) {
-        clearTimeout(timer);
+        window.clearTimeout(timer);
         this.pending.delete(id);
         reject(error instanceof Error ? error : new Error(String(error)));
       }
@@ -89,8 +90,8 @@ export class JsonRpcTransport {
     }
     handlers.add(handler);
     return () => {
-      handlers!.delete(handler);
-      if (handlers!.size === 0) {
+      handlers.delete(handler);
+      if (handlers.size === 0) {
         this.notificationHandlers.delete(method);
       }
     };
@@ -101,7 +102,7 @@ export class JsonRpcTransport {
 
     let msg: Record<string, unknown>;
     try {
-      msg = JSON.parse(line);
+      msg = JSON.parse(line) as Record<string, unknown>;
     } catch {
       // Not valid JSON, skip
       return;

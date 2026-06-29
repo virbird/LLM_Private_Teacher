@@ -30,7 +30,8 @@ export class ClaudianSettingsTab extends PluginSettingTab {
           this.plugin.settings.locale = value;
           setLocale(value);
           await this.plugin.saveSettings();
-          this.display(); // Re-render settings with new locale
+          // eslint-disable-next-line obsidianmd/no-deprecated-api -- display() is the standard Obsidian PluginSettingTab method for re-rendering settings
+          this.display();
           // Refresh all open ChatView instances
           const leaves = this.plugin.app.workspace.getLeavesOfType('claudian-api-view');
           for (const leaf of leaves) {
@@ -41,7 +42,7 @@ export class ClaudianSettingsTab extends PluginSettingTab {
           }
         }));
 
-    const providerDropdown = new Setting(containerEl)
+    new Setting(containerEl)
       .setName(t('settings.activeProvider'))
       .setDesc(t('settings.activeProvider.desc'))
       .addDropdown(dropdown => {

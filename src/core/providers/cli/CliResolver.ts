@@ -1,5 +1,8 @@
+// eslint-disable-next-line obsidianmd/no-nodejs-modules -- Required for CLI executable path resolution (fs module)
 import * as fs from 'fs';
+// eslint-disable-next-line obsidianmd/no-nodejs-modules -- Required for path manipulation in CLI resolution
 import * as path from 'path';
+// eslint-disable-next-line obsidianmd/no-nodejs-modules -- Required for which command execution in CLI resolution
 import { execSync } from 'child_process';
 import { Platform } from 'obsidian';
 
