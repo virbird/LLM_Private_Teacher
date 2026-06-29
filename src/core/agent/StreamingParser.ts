@@ -105,6 +105,14 @@ export function parseOpenAISSE(buffer: string): { events: StreamEvent[]; remaini
     try {
       const data = JSON.parse(payload) as Record<string, unknown>;
 
+      // Check for API error in SSE stream (some APIs return errors as SSE events)
+      const sseError = data.error as Record<string, unknown> | undefined;
+      if (sseError) {
+        const msg = (sseError.message as string) ?? (sseError.code as string) ?? JSON.stringify(sseError);
+        events.push({ type: 'error', message: msg });
+        continue;
+      }
+
       // Check for usage data (OpenAI sends this in the final chunk when stream_options.include_usage is true)
       const usage = data.usage as Record<string, number> | undefined;
       if (usage) {
@@ -120,6 +128,10 @@ export function parseOpenAISSE(buffer: string): { events: StreamEvent[]; remaini
       if (!choice) continue;
 
       const delta = (choice.delta ?? {}) as Record<string, unknown>;
+      // Some models (e.g. Qwen3, DeepSeek-R1) return reasoning content separately
+      if (delta.reasoning_content) {
+        events.push({ type: 'thinking_delta', text: delta.reasoning_content as string });
+      }
       if (delta.content) {
         events.push({ type: 'text_delta', text: delta.content as string });
       }

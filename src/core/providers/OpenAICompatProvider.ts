@@ -115,8 +115,13 @@ export class OpenAICompatProvider implements LlmProvider {
 
     let lastYielded = 0;
     let done = false;
+    let streamError: Error | null = null;
     streamPromise.then(() => { done = true; if (notifyResolve) { notifyResolve(); notifyResolve = null; } })
-      .catch(() => { done = true; if (notifyResolve) { notifyResolve(); notifyResolve = null; } });
+      .catch((err: unknown) => {
+        streamError = err instanceof Error ? err : new Error(String(err));
+        done = true;
+        if (notifyResolve) { notifyResolve(); notifyResolve = null; }
+      });
     while (!done || lastYielded < eventQueue.length) {
       if (lastYielded < eventQueue.length) {
         while (lastYielded < eventQueue.length) yield eventQueue[lastYielded++];
@@ -128,6 +133,8 @@ export class OpenAICompatProvider implements LlmProvider {
       const result = parseOpenAISSE(buffer + '\n');
       for (const event of result.events) yield event;
     }
-    await streamPromise;
+    if (streamError !== null) {
+      yield { type: 'error', message: streamError!.message };
+    }
   }
 }
