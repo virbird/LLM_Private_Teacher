@@ -58,3 +58,12 @@ export class TFolder {
     this.children = children;
   }
 }
+
+export const Platform = {
+  isDesktopApp: true,
+  isMobileApp: false,
+  isMobile: false,
+  isMacOS: true,
+  isWin: false,
+  isLinux: false,
+};

@@ -1,4 +1,5 @@
-export type ProviderId = 'anthropic' | 'openai' | 'openai-compat';
+export type ProviderId = 'anthropic' | 'openai' | 'openai-compat'
+  | 'claude-cli' | 'pi-cli' | 'codex-cli' | 'acp-cli' | 'opencode-cli';
 
 export interface ProviderCapabilities {
   providerId: ProviderId;

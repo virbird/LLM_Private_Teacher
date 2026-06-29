@@ -112,7 +112,7 @@ export class ChatView extends ItemView {
   private learningDispatcher: LearningCommandDispatcher;
   private stopBtn!: HTMLButtonElement;
   private sendBtn!: HTMLButtonElement;
-  private idleTimer: ReturnType<typeof window.setTimeout> | null = null;
+  private idleTimer: ReturnType<typeof setTimeout> | null = null;
   private saveBarEl!: HTMLElement;
   private streamingMsgId = '';
   private rafPending = false;
@@ -425,9 +425,15 @@ export class ChatView extends ItemView {
 
   private updateActiveModel(modelId: string): void {
     const providerId = this.plugin.settings.activeProvider;
-    if (providerId === 'anthropic') this.plugin.settings.providers.anthropic.model = modelId;
-    else if (providerId === 'openai') this.plugin.settings.providers.openai.model = modelId;
-    else this.plugin.settings.providers.openaiCompat.model = modelId;
+    const s = this.plugin.settings.providers;
+    if (providerId === 'anthropic') s.anthropic.model = modelId;
+    else if (providerId === 'openai') s.openai.model = modelId;
+    else if (providerId === 'openai-compat') s.openaiCompat.model = modelId;
+    else if (providerId === 'claude-cli') s.claudeCli.model = modelId;
+    else if (providerId === 'pi-cli') s.piCli.model = modelId;
+    else if (providerId === 'codex-cli') s.codexCli.model = modelId;
+    else if (providerId === 'acp-cli') s.acpCli.model = modelId;
+    else if (providerId === 'opencode-cli') s.opencodeCli.model = modelId;
   }
 
   private populateMaterialSelect(): void {
@@ -999,7 +1005,7 @@ export class ChatView extends ItemView {
 
   private resetIdleTimer(): void {
     this.clearIdleTimer();
-    this.idleTimer = window.setTimeout(() => {
+    this.idleTimer = setTimeout(() => {
       if (this.abortController && !this.abortController.signal.aborted) {
         this.abortController.abort();
         const timeoutMsg = t('request.timeout', { seconds: String(REQUEST_TIMEOUT_MS / 1000) });
@@ -1123,7 +1129,7 @@ export class ChatView extends ItemView {
 
   private clearIdleTimer(): void {
     if (this.idleTimer !== null) {
-      window.clearTimeout(this.idleTimer);
+      clearTimeout(this.idleTimer);
       this.idleTimer = null;
     }
   }
@@ -1260,6 +1266,12 @@ export class ChatView extends ItemView {
     const p = s.activeProvider;
     if (p === 'anthropic') return s.providers.anthropic.model;
     if (p === 'openai') return s.providers.openai.model;
+    if (p === 'openai-compat') return s.providers.openaiCompat.model;
+    if (p === 'claude-cli') return s.providers.claudeCli.model;
+    if (p === 'pi-cli') return s.providers.piCli.model;
+    if (p === 'codex-cli') return s.providers.codexCli.model;
+    if (p === 'acp-cli') return s.providers.acpCli.model;
+    if (p === 'opencode-cli') return s.providers.opencodeCli.model;
     return s.providers.openaiCompat.model;
   }
 
@@ -1268,6 +1280,12 @@ export class ChatView extends ItemView {
     const p = s.activeProvider;
     if (p === 'anthropic') return s.providers.anthropic.maxTokens;
     if (p === 'openai') return s.providers.openai.maxTokens;
+    if (p === 'openai-compat') return s.providers.openaiCompat.maxTokens;
+    if (p === 'claude-cli') return s.providers.claudeCli.maxTokens;
+    if (p === 'pi-cli') return s.providers.piCli.maxTokens;
+    if (p === 'codex-cli') return s.providers.codexCli.maxTokens;
+    if (p === 'acp-cli') return s.providers.acpCli.maxTokens;
+    if (p === 'opencode-cli') return s.providers.opencodeCli.maxTokens;
     return s.providers.openaiCompat.maxTokens;
   }
 

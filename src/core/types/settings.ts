@@ -23,6 +23,17 @@ export interface OpenAICompatAccount {
   customModels: string[];
 }
 
+export interface CliProviderAccount {
+  /** Path to the CLI executable. If empty, auto-detect from PATH. */
+  cliPath: string;
+  /** Model identifier for the CLI. */
+  model: string;
+  /** Maximum tokens for response. */
+  maxTokens: number;
+  /** Thinking budget tokens (Claude-specific, 0 = disabled). */
+  thinkingBudget: number;
+}
+
 export interface LearningMaterial {
   path: string;
   title: string;
@@ -46,6 +57,11 @@ export interface PluginSettings {
     anthropic: AnthropicAccount;
     openai: OpenAIAccount;
     openaiCompat: OpenAICompatAccount;
+    claudeCli: CliProviderAccount;
+    piCli: CliProviderAccount;
+    codexCli: CliProviderAccount;
+    acpCli: CliProviderAccount;
+    opencodeCli: CliProviderAccount;
   };
   systemPrompt: string;
   permissionMode: 'normal' | 'plan';
@@ -64,22 +80,52 @@ export const DEFAULT_SETTINGS: PluginSettings = {
     anthropic: {
       apiKey: '',
       model: 'claude-sonnet-4-20250514',
-      maxTokens: 8192,
+      maxTokens: 256000,
       thinkingBudget: 0,
     },
     openai: {
       apiKey: '',
       model: 'gpt-4o',
-      maxTokens: 4096,
+      maxTokens: 256000,
     },
     openaiCompat: {
       baseUrl: '',
       apiKey: '',
       model: '',
       contextWindow: 128000,
-      maxTokens: 4096,
+      maxTokens: 256000,
       customHeaders: {},
       customModels: [],
+    },
+    claudeCli: {
+      cliPath: '',
+      model: 'claude-sonnet-4-20250514',
+      maxTokens: 256000,
+      thinkingBudget: 0,
+    },
+    piCli: {
+      cliPath: '',
+      model: 'default',
+      maxTokens: 256000,
+      thinkingBudget: 0,
+    },
+    codexCli: {
+      cliPath: '',
+      model: 'o3',
+      maxTokens: 256000,
+      thinkingBudget: 0,
+    },
+    acpCli: {
+      cliPath: '',
+      model: 'default',
+      maxTokens: 256000,
+      thinkingBudget: 0,
+    },
+    opencodeCli: {
+      cliPath: '',
+      model: 'default',
+      maxTokens: 256000,
+      thinkingBudget: 0,
     },
   },
   systemPrompt: '',
