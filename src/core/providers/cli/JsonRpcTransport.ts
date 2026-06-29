@@ -1,6 +1,3 @@
-// eslint-disable-next-line obsidianmd/no-nodejs-modules -- Required for reading JSON-RPC lines from CLI subprocess stdout
-import { createInterface, type Interface } from 'readline';
-
 import type { CliSubprocess } from './CliSubprocess';
 
 type PendingRequest = {
@@ -23,14 +20,18 @@ export class JsonRpcTransport {
   private nextId = 1;
   private readonly pending = new Map<number, PendingRequest>();
   private readonly notificationHandlers = new Map<string, Set<NotificationHandler>>();
-  private readline: Interface | null = null;
+  private lineBuffer = '';
 
   constructor(private readonly subprocess: CliSubprocess) {}
 
   start(): void {
-    this.readline = createInterface({ input: this.subprocess.stdout });
-    this.readline.on('line', (line: string) => {
-      this.handleLine(line);
+    this.subprocess.stdout.on('data', (chunk: Buffer) => {
+      this.lineBuffer += chunk.toString();
+      const lines = this.lineBuffer.split('\n');
+      this.lineBuffer = lines.pop() ?? '';
+      for (const line of lines) {
+        this.handleLine(line);
+      }
     });
   }
 

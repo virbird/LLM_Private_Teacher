@@ -1,4 +1,3 @@
-// eslint-disable-next-line obsidianmd/no-nodejs-modules -- Required for typing CLI subprocess stdio (Electron environment)
 import type { Readable } from 'stream';
 
 import type { ProviderCapabilities, ModelInfo } from '../../types/provider';

@@ -1,6 +1,4 @@
-// eslint-disable-next-line obsidianmd/no-nodejs-modules -- Required for CLI subprocess management (Electron environment)
 import { spawn, type ChildProcess } from 'child_process';
-// eslint-disable-next-line obsidianmd/no-nodejs-modules -- Required for typing subprocess stdio streams
 import type { Readable, Writable } from 'stream';
 
 export interface CliLaunchSpec {
