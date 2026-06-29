@@ -1,9 +1,15 @@
-import { Plugin, type Editor, type Menu } from 'obsidian';
+import { Plugin, type Editor, type Menu, Platform } from 'obsidian';
 import type { PluginSettings } from './core/types/settings';
 import { ProviderRegistry } from './core/providers/ProviderRegistry';
 import { AnthropicProvider } from './core/providers/AnthropicProvider';
 import { OpenAIProvider } from './core/providers/OpenAIProvider';
 import { OpenAICompatProvider } from './core/providers/OpenAICompatProvider';
+import { ClaudeCliProvider } from './core/providers/cli/ClaudeCliProvider';
+import { PiCliProvider } from './core/providers/cli/PiCliProvider';
+import { CodexCliProvider } from './core/providers/cli/CodexCliProvider';
+import { AcpCliProvider } from './core/providers/cli/AcpCliProvider';
+import { OpenCodeCliProvider } from './core/providers/cli/OpenCodeCliProvider';
+import { CliResolver } from './core/providers/cli/CliResolver';
 import { VaultStorage } from './core/storage/VaultStorage';
 import { SessionStorage } from './core/storage/SessionStorage';
 import { SettingsStorage } from './core/storage/SettingsStorage';
@@ -16,6 +22,19 @@ export default class ClaudianPlugin extends Plugin {
   sessionStorage!: SessionStorage;
   private vaultStorage!: VaultStorage;
   private settingsStorage!: SettingsStorage;
+
+  /**
+   * Get the current editor selection.
+   * On iPad, editor.getSelection() may return empty at the time editor-menu fires.
+   * Fall back to window.getSelection() which reflects the native iOS text selection.
+   */
+  private getEditorSelection(editor: Editor): string {
+    let selection = editor.getSelection();
+    if (!selection) {
+      selection = window.getSelection()?.toString() ?? '';
+    }
+    return selection;
+  }
 
   async onload() {
     this.vaultStorage = new VaultStorage(this.app);
@@ -43,7 +62,7 @@ export default class ClaudianPlugin extends Plugin {
       id: 'quote-selection',
       name: 'Quote selection to chat',
       editorCallback: (editor: Editor) => {
-        const selection = editor.getSelection();
+        const selection = this.getEditorSelection(editor);
         if (!selection.trim()) return;
         const file = this.app.workspace.getActiveFile();
         const filePath = file?.path ?? 'current file';
@@ -57,7 +76,7 @@ export default class ClaudianPlugin extends Plugin {
       id: 'edit-selection',
       name: 'Edit selection with AI',
       editorCallback: (editor: Editor) => {
-        const selection = editor.getSelection();
+        const selection = this.getEditorSelection(editor);
         if (!selection.trim()) return;
         const file = this.app.workspace.getActiveFile();
         const filePath = file?.path ?? 'current file';
@@ -72,7 +91,7 @@ export default class ClaudianPlugin extends Plugin {
       id: 'explain-selection',
       name: 'Explain selection with AI',
       editorCallback: (editor: Editor) => {
-        const selection = editor.getSelection();
+        const selection = this.getEditorSelection(editor);
         if (!selection.trim()) return;
         const prompt = `Please explain the following content clearly and concisely:\n\n${selection}`;
         void this.sendToChat(prompt);
@@ -83,7 +102,7 @@ export default class ClaudianPlugin extends Plugin {
       id: 'translate-selection',
       name: 'Translate selection with AI',
       editorCallback: (editor: Editor) => {
-        const selection = editor.getSelection();
+        const selection = this.getEditorSelection(editor);
         if (!selection.trim()) return;
         const prompt = `Please translate the following text. If it's in English, translate to Chinese. ` +
           `If it's in Chinese, translate to English. Output ONLY the translation.\n\n${selection}`;
@@ -95,7 +114,7 @@ export default class ClaudianPlugin extends Plugin {
       id: 'summarize-selection',
       name: 'Summarize selection with AI',
       editorCallback: (editor: Editor) => {
-        const selection = editor.getSelection();
+        const selection = this.getEditorSelection(editor);
         if (!selection.trim()) return;
         const prompt = `Please provide a concise summary of the following content:\n\n${selection}`;
         void this.sendToChat(prompt);
@@ -105,7 +124,7 @@ export default class ClaudianPlugin extends Plugin {
     // --- Right-click context menu ---
     this.registerEvent(
       this.app.workspace.on('editor-menu', (menu: Menu, editor: Editor) => {
-        const selection = editor.getSelection();
+        const selection = this.getEditorSelection(editor);
         if (!selection.trim()) return;
 
         menu.addSeparator();
@@ -169,7 +188,7 @@ export default class ClaudianPlugin extends Plugin {
 
   refreshProviders(): void {
     ProviderRegistry.clear();
-    const { anthropic, openai, openaiCompat } = this.settings.providers;
+    const { anthropic, openai, openaiCompat, claudeCli, piCli, codexCli, acpCli, opencodeCli } = this.settings.providers;
     if (anthropic.apiKey) ProviderRegistry.register(new AnthropicProvider(anthropic.apiKey));
     if (openai.apiKey) ProviderRegistry.register(new OpenAIProvider(openai.apiKey));
     if (openaiCompat.apiKey && openaiCompat.baseUrl && openaiCompat.model) {
@@ -177,6 +196,39 @@ export default class ClaudianPlugin extends Plugin {
         openaiCompat.baseUrl, openaiCompat.apiKey, openaiCompat.model,
         openaiCompat.contextWindow, openaiCompat.customHeaders, openaiCompat.customModels,
       ));
+    }
+    // CLI providers — desktop only
+    if (Platform.isDesktopApp) {
+      const claudePath = CliResolver.resolve(claudeCli.cliPath, ['claude']);
+      if (claudePath) {
+        ProviderRegistry.register(new ClaudeCliProvider(
+          claudePath, claudeCli.model, claudeCli.maxTokens,
+        ));
+      }
+      const piPath = CliResolver.resolve(piCli.cliPath, ['pi']);
+      if (piPath) {
+        ProviderRegistry.register(new PiCliProvider(
+          piPath, piCli.model, piCli.maxTokens,
+        ));
+      }
+      const codexPath = CliResolver.resolve(codexCli.cliPath, ['codex']);
+      if (codexPath) {
+        ProviderRegistry.register(new CodexCliProvider(
+          codexPath, codexCli.model, codexCli.maxTokens,
+        ));
+      }
+      const acpPath = CliResolver.resolve(acpCli.cliPath, ['acp']);
+      if (acpPath) {
+        ProviderRegistry.register(new AcpCliProvider(
+          acpPath, acpCli.model, acpCli.maxTokens,
+        ));
+      }
+      const opencodePath = CliResolver.resolve(opencodeCli.cliPath, ['opencode']);
+      if (opencodePath) {
+        ProviderRegistry.register(new OpenCodeCliProvider(
+          opencodePath, opencodeCli.model, opencodeCli.maxTokens,
+        ));
+      }
     }
   }
 

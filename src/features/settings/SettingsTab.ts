@@ -1,9 +1,10 @@
-import { PluginSettingTab, Setting, Notice, type App } from 'obsidian';
+import { PluginSettingTab, Setting, Notice, Platform, type App } from 'obsidian';
 import type ClaudianPlugin from '../../main';
 import type { ProviderId } from '../../core/types/provider';
-import { testAnthropic, testOpenAI, type TestResult } from '../../utils/testConnection';
+import { testAnthropic, testOpenAI, testCli, type TestResult } from '../../utils/testConnection';
 import { t, setLocale } from '../../core/i18n';
 import { ChatView } from '../chat/ChatView';
+import { CliResolver } from '../../core/providers/cli/CliResolver';
 
 export class ClaudianSettingsTab extends PluginSettingTab {
   plugin: ClaudianPlugin;
@@ -29,7 +30,7 @@ export class ClaudianSettingsTab extends PluginSettingTab {
           this.plugin.settings.locale = value;
           setLocale(value);
           await this.plugin.saveSettings();
-          this.display(); // Re-render settings with new locale
+          this.display();
           // Refresh all open ChatView instances
           const leaves = this.plugin.app.workspace.getLeavesOfType('claudian-api-view');
           for (const leaf of leaves) {
@@ -43,15 +44,26 @@ export class ClaudianSettingsTab extends PluginSettingTab {
     new Setting(containerEl)
       .setName(t('settings.activeProvider'))
       .setDesc(t('settings.activeProvider.desc'))
-      .addDropdown(dropdown => dropdown
-        .addOption('anthropic', 'Anthropic Claude')
-        .addOption('openai', 'OpenAI')
-        .addOption('openai-compat', 'OpenAI Compatible')
-        .setValue(this.plugin.settings.activeProvider)
-        .onChange(async (value) => {
-          this.plugin.settings.activeProvider = value as ProviderId;
-          await this.plugin.saveSettings();
-        }));
+      .addDropdown(dropdown => {
+        dropdown
+          .addOption('anthropic', 'Anthropic Claude')
+          .addOption('openai', 'OpenAI')
+          .addOption('openai-compat', 'OpenAI Compatible');
+        // CLI providers — desktop only
+        if (Platform.isDesktopApp) {
+          dropdown.addOption('claude-cli', 'Claude CLI (Local)');
+          dropdown.addOption('pi-cli', 'Pi CLI (Local)');
+          dropdown.addOption('codex-cli', 'Codex CLI (Local)');
+          dropdown.addOption('acp-cli', 'ACP CLI (Local)');
+          dropdown.addOption('opencode-cli', 'OpenCode CLI (Local)');
+        }
+        dropdown
+          .setValue(this.plugin.settings.activeProvider)
+          .onChange(async (value) => {
+            this.plugin.settings.activeProvider = value as ProviderId;
+            await this.plugin.saveSettings();
+          });
+      });
 
     // === Anthropic section ===
     new Setting(containerEl).setName('Anthropic Claude').setHeading();
@@ -184,6 +196,35 @@ export class ClaudianSettingsTab extends PluginSettingTab {
         this.plugin.settings.providers.openaiCompat.baseUrl,
       ),
     );
+
+    // === CLI Providers (Desktop Only) ===
+    if (Platform.isDesktopApp) {
+      new Setting(containerEl).setName(t('settings.cliProviders')).setHeading();
+      containerEl.createEl('p', {
+        text: t('settings.cliProviders.desc'),
+        cls: 'setting-item-description',
+      });
+
+      // --- Claude CLI ---
+      this.addCliProviderSettings(containerEl, 'claudeCli', 'Claude CLI', ['claude'],
+        'claude-sonnet-4-20250514', true);
+
+      // --- Pi CLI ---
+      this.addCliProviderSettings(containerEl, 'piCli', 'Pi CLI', ['pi'],
+        'default', false);
+
+      // --- Codex CLI ---
+      this.addCliProviderSettings(containerEl, 'codexCli', 'Codex CLI', ['codex'],
+        'o3', false);
+
+      // --- OpenCode CLI ---
+      this.addCliProviderSettings(containerEl, 'opencodeCli', 'OpenCode CLI', ['opencode'],
+        'default', false);
+
+      // --- ACP CLI ---
+      this.addCliProviderSettings(containerEl, 'acpCli', 'ACP CLI', ['acp'],
+        'default', false);
+    }
 
     // === General section ===
     new Setting(containerEl).setName(t('settings.general')).setHeading();
@@ -359,6 +400,91 @@ export class ClaudianSettingsTab extends PluginSettingTab {
           })();
         });
       }
+    }
+  }
+
+  private addCliProviderSettings(
+    containerEl: HTMLElement,
+    settingsKey: 'claudeCli' | 'piCli' | 'codexCli' | 'acpCli' | 'opencodeCli',
+    displayName: string,
+    fallbackNames: string[],
+    modelPlaceholder: string,
+    showThinkingBudget: boolean,
+  ): void {
+    const account = this.plugin.settings.providers[settingsKey];
+
+    new Setting(containerEl).setName(displayName).setHeading();
+
+    // CLI Path
+    const statusEl = containerEl.createEl('div', { cls: 'claudian-test-status' });
+
+    new Setting(containerEl)
+      .setName(t('settings.cliPath'))
+      .setDesc(t('settings.cliPath.desc'))
+      .addText(text => text
+        .setPlaceholder(`/usr/local/bin/${fallbackNames[0]}`)
+        .setValue(account.cliPath)
+        .onChange(async (value) => {
+          account.cliPath = value;
+          await this.plugin.saveSettings();
+          this.plugin.refreshProviders();
+          this.updateCliStatus(statusEl, value, fallbackNames);
+        }));
+
+    // Model — free text input so user can type any model name the CLI supports
+    new Setting(containerEl)
+      .setName(t('settings.model'))
+      .setDesc(t('settings.model.cliDesc'))
+      .addText(text => text
+        .setPlaceholder(modelPlaceholder)
+        .setValue(account.model)
+        .onChange(async (value) => {
+          account.model = value.trim() || modelPlaceholder;
+          await this.plugin.saveSettings();
+          this.plugin.refreshProviders();
+        }));
+
+    // Max tokens
+    new Setting(containerEl)
+      .setName(t('settings.maxTokens'))
+      .addText(text => text
+        .setValue(String(account.maxTokens))
+        .onChange(async (value) => {
+          account.maxTokens = parseInt(value) || 8192;
+          await this.plugin.saveSettings();
+        }));
+
+    // Thinking budget (Claude-specific)
+    if (showThinkingBudget) {
+      new Setting(containerEl)
+        .setName(t('settings.thinkingBudget'))
+        .setDesc(t('settings.thinkingBudget.desc'))
+        .addText(text => text
+          .setValue(String(account.thinkingBudget))
+          .onChange(async (value) => {
+            account.thinkingBudget = parseInt(value) || 0;
+            await this.plugin.saveSettings();
+          }));
+    }
+
+    this.updateCliStatus(statusEl, account.cliPath, fallbackNames);
+
+    // Test button
+    this.addTestButton(
+      containerEl,
+      t('settings.test.cli'),
+      () => testCli(account.cliPath, fallbackNames),
+    );
+  }
+
+  private updateCliStatus(statusEl: HTMLElement, cliPath: string, fallbackNames: string[]): void {
+    const resolved = CliResolver.resolve(cliPath, fallbackNames);
+    if (resolved) {
+      statusEl.textContent = `\u2705 ${resolved}`;
+      statusEl.className = 'claudian-test-status is-success';
+    } else {
+      statusEl.textContent = '\u26a0\ufe0f CLI not found';
+      statusEl.className = 'claudian-test-status is-error';
     }
   }
 

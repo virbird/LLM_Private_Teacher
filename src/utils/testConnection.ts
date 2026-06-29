@@ -1,4 +1,6 @@
 import { requestUrl } from 'obsidian';
+import { execSync } from 'child_process';
+import { CliResolver } from '../core/providers/cli/CliResolver';
 
 export interface TestResult {
   success: boolean;
@@ -71,7 +73,6 @@ export async function testOpenAI(apiKey: string, model: string, baseUrl: string)
     return { success: false, message: msg, latencyMs: latency };
   }
 }
-
 function parseApiError(e: unknown): string {
   // Obsidian's requestUrl throws with status info
   if (e && typeof e === 'object' && 'status' in e) {
@@ -87,4 +88,68 @@ function parseApiError(e: unknown): string {
   }
   if (e instanceof Error && e.message.includes('fetch')) return `Network error: ${e.message}`;
   return e instanceof Error ? e.message : String(e);
+}
+
+/**
+ * Test a CLI provider by resolving its path and running `--version`.
+ * Verifies the CLI is installed, executable, and responding.
+ */
+export async function testCli(cliPath: string, fallbackNames: string[]): Promise<TestResult> {
+  const start = Date.now();
+  try {
+    const resolved = CliResolver.resolve(cliPath, fallbackNames);
+    if (!resolved) {
+      return {
+        success: false,
+        message: `CLI not found. Tried: ${cliPath || '(empty)'}, then PATH lookup for [${fallbackNames.join(', ')}]`,
+        latencyMs: Date.now() - start,
+      };
+    }
+
+    // Run `cliPath --version` to verify the CLI is functional
+    try {
+      const output = execSync(`"${resolved}" --version`, {
+        encoding: 'utf-8',
+        timeout: 10000,
+        shell: process.env.SHELL ?? '/bin/zsh',
+        env: { ...process.env },
+      }).trim();
+
+      const latency = Date.now() - start;
+      return {
+        success: true,
+        message: output ? `${resolved} — ${output}` : `CLI ready: ${resolved}`,
+        latencyMs: latency,
+      };
+    } catch {
+      // --version might not be supported; try --help as fallback
+      try {
+        execSync(`"${resolved}" --help`, {
+          encoding: 'utf-8',
+          timeout: 10000,
+          shell: process.env.SHELL ?? '/bin/zsh',
+          env: { ...process.env },
+          stdio: ['pipe', 'pipe', 'pipe'],
+        });
+        const latency = Date.now() - start;
+        return {
+          success: true,
+          message: `CLI ready: ${resolved}`,
+          latencyMs: latency,
+        };
+      } catch (e: unknown) {
+        const latency = Date.now() - start;
+        const msg = e instanceof Error ? e.message.substring(0, 200) : String(e);
+        return {
+          success: false,
+          message: `CLI found but not responding: ${msg}`,
+          latencyMs: latency,
+        };
+      }
+    }
+  } catch (e: unknown) {
+    const latency = Date.now() - start;
+    const msg = e instanceof Error ? e.message : String(e);
+    return { success: false, message: msg, latencyMs: latency };
+  }
 }
