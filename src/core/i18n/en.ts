@@ -113,6 +113,7 @@ export const en = {
   'help.role.tutor': '<strong>Private Tutor</strong> — strictly follows the material with a 5-step teaching loop, ideal for deep systematic learning.',
   'help.role.socratic': '<strong>Socratic Tutor (STEM)</strong> — guides with questions instead of giving direct answers.',
   'help.role.language': '<strong>Language Partner (Humanities)</strong> — focuses on vocabulary, grammar, translation, and cultural context.',
+  'help.role.ielts': '<strong>IELTS Writing 6.5 Coach</strong> — targets 5.5→6.5 progression with 4-dimension matrix (TR/CC/LR/GRA), progressive upgrade advice, rewrite task cards, and grammar module linkage.',
   'help.commands.heading': '3. Use Learning Method Commands',
   'help.commands.1': 'Type <code>/</code> in the input box. <strong>Requires parameter</strong>: add a space then your topic. <strong>No parameter</strong>: just press Enter.',
   'help.commands.guide': '<code>/guide topic</code> 🔹generate study guide',
@@ -194,6 +195,8 @@ export const en = {
   'role.socratic.desc': 'Guides with questions instead of giving direct answers',
   'role.language.name': 'Language Partner (Humanities)',
   'role.language.desc': 'Bilingual companion for reading, vocabulary, and grammar',
+  'role.ielts.name': 'IELTS Writing 6.5 Coach',
+  'role.ielts.desc': '4-dimension matrix + progressive 5.5→6→6.5 upgrade + rewrite task loop',
 
   // --- Learning methods ---
   'method.guide.name': 'Study Guide',

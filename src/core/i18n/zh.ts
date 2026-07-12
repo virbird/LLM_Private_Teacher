@@ -113,6 +113,7 @@ export const zh = {
   'help.role.tutor': '<strong>私人导师</strong>：严格基于材料，按「概念拆解 → 规则技巧 → 逻辑训练 → 知识迁移 → 自评检查」五步循环教学，适合系统深入学习。',
   'help.role.socratic': '<strong>苏格拉底教学(理工)</strong>：不直接给答案，用提问引导你自己推导出结论，适合理科问题求解。',
   'help.role.language': '<strong>语言学习伙伴(文科)</strong>：专注于词汇、语法、翻译、改写和文化背景，适合语言类材料学习。',
+  'help.role.ielts': '<strong>雅思写作6.5分冲刺教练</strong>：针对5.5冲6.5目标，四维精批矩阵（TR/CC/LR/GRA）+ 5.5→6→6.5渐进式升级建议 + 重写任务卡闭环，结合语法复习模块联动反馈。',
   'help.commands.heading': '3. 使用学习方法命令',
   'help.commands.1': '在输入框输入 <code>/</code> 查看命令。<strong>需要参数</strong>的命令：空格后写主题；<strong>无需参数</strong>的命令直接回车即可。',
   'help.commands.guide': '<code>/guide 主题</code> 🔹生成学习指南',
@@ -194,6 +195,8 @@ export const zh = {
   'role.socratic.desc': '不直接给答案，用提问引导推导',
   'role.language.name': '语言学习伙伴(文科)',
   'role.language.desc': '词汇、语法、翻译、文化背景双语学习',
+  'role.ielts.name': '雅思写作6.5分冲刺教练',
+  'role.ielts.desc': '四维精批矩阵 + 5.5→6→6.5渐进式升级 + 重写任务卡闭环',
 
   // --- Learning methods ---
   'method.guide.name': '即时学习指南',
