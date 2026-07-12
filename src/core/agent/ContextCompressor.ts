@@ -42,7 +42,7 @@ export class ContextCompressor {
     // Build API messages from old chat messages
     const apiMessages: ApiMessage[] = toCompress
       .filter(m => m.role === 'user' || (m.role === 'assistant' && m.content))
-      .map(m => ({ role: m.role, content: m.content } as ApiMessage));
+      .map(m => ({ role: m.role, content: m.content }));
 
     const summaryRequest: ChatRequest = {
       messages: [

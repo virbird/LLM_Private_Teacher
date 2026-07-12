@@ -115,10 +115,10 @@ export class OpenAICompatProvider implements LlmProvider {
 
     let lastYielded = 0;
     let done = false;
-    let streamError: Error | null = null;
+    const streamState: { error: Error | null } = { error: null };
     streamPromise.then(() => { done = true; if (notifyResolve) { notifyResolve(); notifyResolve = null; } })
       .catch((err: unknown) => {
-        streamError = err instanceof Error ? err : new Error(String(err));
+        streamState.error = err instanceof Error ? err : new Error(String(err));
         done = true;
         if (notifyResolve) { notifyResolve(); notifyResolve = null; }
       });
@@ -133,8 +133,8 @@ export class OpenAICompatProvider implements LlmProvider {
       const result = parseOpenAISSE(buffer + '\n');
       for (const event of result.events) yield event;
     }
-    if (streamError !== null) {
-      yield { type: 'error', message: streamError!.message };
+    if (streamState.error) {
+      yield { type: 'error', message: streamState.error.message };
     }
   }
 }

@@ -1144,7 +1144,7 @@ export class ChatView extends ItemView {
       let helpText = t(helpKeyName);
       // If key not found, t() returns the key string itself
       if (helpText === helpKeyName) {
-        helpText = t('cmd.help.unknown' as I18nKey);
+        helpText = t('cmd.help.unknown');
       }
       this.chatState.addUserMessage(text);
       this.chatState.startAssistantMessage();
