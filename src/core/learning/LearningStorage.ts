@@ -40,6 +40,10 @@ export class LearningStorage {
   // --- User-visible vault file operations ---
 
   async readVaultFile(path: string): Promise<string | null> {
+    // Support absolute paths (outside vault) on Desktop via Node.js fs
+    if (this.isAbsolutePath(path)) {
+      return this.readTextFromFs(path);
+    }
     try {
       if (await this.adapter.exists(path)) {
         return await this.adapter.read(path);
@@ -72,6 +76,10 @@ export class LearningStorage {
   // --- Binary vault file operations (for .apkg) ---
 
   async readVaultFileBinary(path: string): Promise<ArrayBuffer | null> {
+    // Support absolute paths (outside vault) on Desktop via Node.js fs
+    if (this.isAbsolutePath(path)) {
+      return this.readBinaryFromFs(path);
+    }
     try {
       if (await this.adapter.exists(path)) {
         return await this.adapter.readBinary(path);
@@ -87,6 +95,34 @@ export class LearningStorage {
   }
 
   // --- Utility ---
+
+  /** Check if a path is absolute (works on all platforms) */
+  private isAbsolutePath(path: string): boolean {
+    return path.startsWith('/') || /^[A-Za-z]:[\\/]/.test(path);
+  }
+
+  /** Read text file from filesystem via Node.js fs (Desktop only) */
+  private async readTextFromFs(path: string): Promise<string | null> {
+    try {
+      // eslint-disable-next-line @typescript-eslint/no-require-imports -- dynamic require for Node.js fs, external in esbuild
+      const fs = require('fs') as typeof import('fs');
+      return fs.readFileSync(path, 'utf-8');
+    } catch {
+      return null;
+    }
+  }
+
+  /** Read binary file from filesystem via Node.js fs (Desktop only) */
+  private async readBinaryFromFs(path: string): Promise<ArrayBuffer | null> {
+    try {
+      // eslint-disable-next-line @typescript-eslint/no-require-imports -- dynamic require for Node.js fs, external in esbuild
+      const fs = require('fs') as typeof import('fs');
+      const buf = fs.readFileSync(path);
+      return buf.buffer.slice(buf.byteOffset, buf.byteOffset + buf.byteLength) as ArrayBuffer;
+    } catch {
+      return null;
+    }
+  }
 
   private async ensureDir(dirPath: string): Promise<void> {
     const parts = dirPath.split('/');
