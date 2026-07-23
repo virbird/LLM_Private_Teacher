@@ -587,6 +587,8 @@ export class LearningCommandDispatcher {
 
     let cards: Flashcard[];
     let scheduleEntries: ReviewEntry[] = [];
+    let modelCss: string | undefined;
+    let renderedAnswers: Record<string, string> | undefined;
 
     if (filePath.toLowerCase().endsWith('.apkg')) {
       // Binary .apkg path
@@ -602,6 +604,8 @@ export class LearningCommandDispatcher {
         }
         cards = result.cards;
         scheduleEntries = result.scheduleEntries;
+        modelCss = result.modelCss;
+        renderedAnswers = result.renderedAnswers;
       } catch (e: unknown) {
         const msg = e instanceof Error ? e.message : String(e);
         console.error('[CardImport] apkg failed:', msg);
@@ -664,7 +668,7 @@ export class LearningCommandDispatcher {
     // Generate a visible .md file in learning/flashcards/ for vault browsing
     const cardsForMd = force ? cards : newCards;
     if (cardsForMd.length > 0) {
-      await this.writeImportedFlashcardMd(cardsForMd, filePath);
+      await this.writeImportedFlashcardMd(cardsForMd, filePath, modelCss, renderedAnswers);
     }
 
     if (filePath.toLowerCase().endsWith('.apkg')) {
@@ -733,12 +737,15 @@ export class LearningCommandDispatcher {
   }
 
   /** Write imported cards as a visible .md file in learning/flashcards/ for vault browsing */
-  private async writeImportedFlashcardMd(cards: Flashcard[], sourcePath: string): Promise<void> {
+  private async writeImportedFlashcardMd(
+    cards: Flashcard[], sourcePath: string,
+    modelCss?: string, renderedAnswers?: Record<string, string>,
+  ): Promise<void> {
     const folder = 'learning/flashcards';
     const date = LearningStorage.today();
     // Derive a safe name from the source filename
     const baseName = sourcePath
-      .replace(/^.*[\\/]/, '')           // strip directory
+      .replace(/^.*[\/]/, '')           // strip directory
       .replace(/\.[^.]+$/, '')           // strip extension
       .replace(/[^a-zA-Z0-9\u4e00-\u9fff_-]/g, '_')
       .slice(0, 40);
@@ -747,17 +754,24 @@ export class LearningCommandDispatcher {
     const filePath = `${folder}/${safeSubject}/${baseName}-${date}.md`;
 
     let md = `# Imported Flashcards: ${baseName}\n\n*Source: ${sourcePath}*\n*Imported: ${date}*\n*Cards: ${cards.length}*\n\n---\n\n`;
+
+    // Embed Anki model CSS for original styling (colored sections, fonts, layout)
+    if (modelCss) {
+      md += `<style>\n${modelCss}\n</style>\n\n---\n\n`;
+    }
+
     for (let i = 0; i < cards.length; i++) {
       const card = cards[i];
       const isCloze = card.type === 'cloze';
       md += `## ${isCloze ? '🔤' : 'Q'}${i + 1}: ${card.question}\n\n`;
-      // Detect block-level HTML: if answer starts with a block tag, put it on its own line
-      // (markdown requires block HTML to be on a separate line for proper rendering)
-      const hasBlockHtml = /^\s*<(div|p|table|ul|ol|blockquote|pre|h[1-6]|center|figure)/i.test(card.answer);
+
+      // Use rendered Anki template HTML if available, otherwise fall back to sanitized answer
+      const answerHtml = renderedAnswers?.[card.id] ?? card.answer;
+      const hasBlockHtml = /^\s*<(div|p|table|ul|ol|blockquote|pre|h[1-6]|center|figure|font)/i.test(answerHtml);
       if (hasBlockHtml) {
-        md += `${card.answer}\n\n`;
+        md += `${answerHtml}\n\n`;
       } else {
-        md += `**A:** ${card.answer}\n\n`;
+        md += `**A:** ${answerHtml}\n\n`;
       }
       if (card.tags?.length) md += `*Tags: ${card.tags.join(', ')}*\n\n`;
       md += '---\n\n';

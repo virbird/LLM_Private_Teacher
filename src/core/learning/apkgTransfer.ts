@@ -369,6 +369,46 @@ export async function exportApkg(entries: ReviewEntry[], SQL: SqlJsStatic): Prom
 
 // --- Import ---
 
+// --- Anki template rendering (apply model afmt + css to field content) ---
+
+interface AnkiModel {
+  css: string;
+  fieldNames: string[];
+  afmt: string;
+}
+
+/** Render an Anki card template by replacing {{FieldName}} placeholders with field values. */
+function renderAnkiTemplate(template: string, fields: string[], fieldNames: string[], tags: string): string {
+  let html = template;
+
+  // Handle conditionals {{#FieldName}}...{{/FieldName}} — keep content only if field is non-empty
+  html = html.replace(/{{#(\w+)}}([\s\S]*?){{\/\1}}/g, (_, name: string, content: string) => {
+    const idx = fieldNames.indexOf(name);
+    return idx >= 0 && fields[idx]?.trim() ? content : '';
+  });
+
+  // Replace {{FieldName}} and {{cloze:FieldName}}, {{type:FieldName}}, {{hint:FieldName}}
+  for (let i = 0; i < fieldNames.length; i++) {
+    const value = fields[i] ?? '';
+    const name = fieldNames[i];
+    html = html.replace(new RegExp(`{{cloze:${name}}}`, 'g'), value);
+    html = html.replace(new RegExp(`{{type:${name}}}`, 'g'), value);
+    html = html.replace(new RegExp(`{{hint:${name}}}`, 'g'), value);
+    html = html.replace(new RegExp(`{{${name}}}`, 'g'), value);
+  }
+
+  // Replace {{FrontSide}} with first field content
+  html = html.replace(/{{FrontSide}}/g, fields[0] ?? '');
+
+  // Replace {{Tags}}
+  html = html.replace(/{{Tags}}/g, tags);
+
+  // Strip any remaining unreplaced {{...}} placeholders
+  html = html.replace(/{{[^}]+}}/g, '');
+
+  return html;
+}
+
 /** Import an Anki .apkg (text-only) into flashcards + scheduling entries. */
 export async function importApkg(buffer: ArrayBuffer, SQL: SqlJsStatic): Promise<ImportResult> {
   const zip = await JSZip.loadAsync(buffer);
@@ -380,34 +420,56 @@ export async function importApkg(buffer: ArrayBuffer, SQL: SqlJsStatic): Promise
   const dbBytes = await dbFile.async('uint8array');
   const db = new SQL.Database(dbBytes);
 
-  // Read collection creation time for review-due conversion
+  // Read collection creation time and models for template rendering
   let crt = 0;
+  let modelMap: Record<string, AnkiModel> = {};
+  let modelCss = '';
   try {
-    const colRes = db.exec('SELECT crt FROM col LIMIT 1');
+    const colRes = db.exec('SELECT crt, models FROM col LIMIT 1');
     if (colRes.length > 0 && colRes[0].values.length > 0) {
       crt = Number(colRes[0].values[0][0]);
+      const modelsJson = String(colRes[0].values[0][1] ?? '{}');
+      try {
+        const models = JSON.parse(modelsJson) as Record<string, {
+          css?: string;
+          flds?: Array<{ name: string; ord: number }>;
+          tmpls?: Array<{ afmt?: string }>;
+        }>;
+        const cssParts: string[] = [];
+        for (const [mid, model] of Object.entries(models)) {
+          const fieldNames = (model.flds ?? [])
+            .sort((a, b) => a.ord - b.ord)
+            .map(f => f.name);
+          const afmt = model.tmpls?.[0]?.afmt ?? '{{Back}}';
+          modelMap[mid] = { css: model.css ?? '', fieldNames, afmt };
+          if (model.css) cssParts.push(model.css);
+        }
+        modelCss = cssParts.join('\n');
+      } catch { /* models JSON parse failed; proceed without templates */ }
     }
   } catch { /* col table missing; crt stays 0 */ }
 
   const res = db.exec(
-    'SELECT n.id, n.flds, n.tags, c.type, c.queue, c.due, c.ivl, c.factor, c.reps ' +
+    'SELECT n.id, n.flds, n.tags, n.mid, c.type, c.queue, c.due, c.ivl, c.factor, c.reps ' +
     'FROM notes n JOIN cards c ON c.nid = n.id ORDER BY n.id, c.ord',
   );
 
   const cards: Flashcard[] = [];
   const scheduleEntries: ReviewEntry[] = [];
+  const renderedAnswers: Record<string, string> = {};
 
   if (res.length > 0) {
     for (const row of res[0].values) {
       const nid = String(row[0]);
       const rawFlds = String(row[1] ?? '');
       const rawTags = String(row[2] ?? '');
-      const ankiType = Number(row[3]);
-      const queue = Number(row[4]);
-      const due = Number(row[5]);
-      const ivl = Number(row[6]);
-      const factor = Number(row[7]);
-      const reps = Number(row[8]);
+      const mid = String(row[3] ?? '');
+      const ankiType = Number(row[4]);
+      const queue = Number(row[5]);
+      const due = Number(row[6]);
+      const ivl = Number(row[7]);
+      const factor = Number(row[8]);
+      const reps = Number(row[9]);
 
       const fields = rawFlds.split(FIELD_SEP);
       const firstField = fields[0] ?? '';
@@ -450,6 +512,13 @@ export async function importApkg(buffer: ArrayBuffer, SQL: SqlJsStatic): Promise
         type: cardType,
       });
 
+      // Render the Anki answer template (afmt) for .md output with original styling
+      const model = modelMap[mid];
+      if (model) {
+        const renderedHtml = renderAnkiTemplate(model.afmt, fields, model.fieldNames, rawTags);
+        renderedAnswers[cardId] = sanitizeHtml(renderedHtml);
+      }
+
       scheduleEntries.push({
         cardId,
         question,
@@ -473,5 +542,5 @@ export async function importApkg(buffer: ArrayBuffer, SQL: SqlJsStatic): Promise
   }
 
   db.close();
-  return { cards, scheduleEntries, skipped: 0 };
+  return { cards, scheduleEntries, skipped: 0, modelCss, renderedAnswers };
 }

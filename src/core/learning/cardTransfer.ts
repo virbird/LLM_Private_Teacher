@@ -16,6 +16,10 @@ export interface ImportResult {
   /** Scheduling state to restore (from JSON import) */
   scheduleEntries: ReviewEntry[];
   skipped: number;
+  /** CSS from Anki models (for .md rendering with original styling) */
+  modelCss?: string;
+  /** Rendered HTML answer per cardId (template + CSS applied, for .md output) */
+  renderedAnswers?: Record<string, string>;
 }
 
 // --- CSV Export ---
