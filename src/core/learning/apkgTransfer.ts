@@ -362,7 +362,10 @@ export async function importApkg(buffer: ArrayBuffer, SQL: SqlJsStatic): Promise
 
       const isCloze = /\{\{c\d+::/.test(firstField);
       const question = stripHtml(firstField);
-      const answer = isCloze ? extractClozeAnswers(firstField) : stripHtml(fields[1] ?? '');
+      // Concatenate all remaining fields as the answer (vocab decks often have 3+ fields: word, pronunciation, definition, example, etc.)
+      const answer = isCloze
+        ? extractClozeAnswers(firstField)
+        : fields.slice(1).map(f => stripHtml(f)).filter(Boolean).join('\n\n');
       const tagList = rawTags.trim().split(/\s+/).filter(Boolean);
 
       // Compute next review date from Anki scheduling
