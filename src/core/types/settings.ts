@@ -49,6 +49,8 @@ export interface LearningConfig {
   planFolder: string;
   quizFolder: string;
   noteFolder: string;
+  /** Learning step intervals in minutes before graduating to SM-2. Default [10, 1440] */
+  learningSteps: number[];
 }
 
 export interface PluginSettings {
@@ -142,6 +144,7 @@ export const DEFAULT_SETTINGS: PluginSettings = {
     planFolder: 'learning/plans',
     quizFolder: 'learning/quizzes',
     noteFolder: '学习笔记',
+    learningSteps: [10, 1440],
   },
   contextCompressionEnabled: true,
 };

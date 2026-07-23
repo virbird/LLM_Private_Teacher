@@ -1,15 +1,19 @@
 import { LearningStorage } from './LearningStorage';
 import { ProviderRegistry } from '../providers/ProviderRegistry';
 import { buildSystemPrompt } from '../prompt/systemPrompt';
-import { buildFlashcardPrompt, parseFlashcards, type Flashcard } from '../prompt/flashcard';
+import { buildFlashcardPrompt, buildClozePrompt, parseFlashcards, renderClozeQuestion, renderClozeAnswer, type Flashcard } from '../prompt/flashcard';
 import { buildSummaryPrompt } from '../prompt/summary';
 import { buildKnowledgeMapPrompt } from '../prompt/knowledgeMap';
 import { buildPlanPrompt } from '../prompt/plan';
 import { buildPlanSummaryPrompt } from '../prompt/planSummary';
 import { buildQuizPrompt } from '../prompt/quiz';
-import { SpacedRepetitionManager, type ReviewEntry } from './spacedRepetition';
+import { SpacedRepetitionManager, DEFAULT_LEARNING_STEPS, type ReviewEntry } from './spacedRepetition';
 import { LearningStatsService } from './stats';
 import { ErrorNotebook } from './errorNotebook';
+import { CardManager } from './cardManager';
+import { exportCsv, exportJson, parseCsv, parseJsonImport, detectFormat } from './cardTransfer';
+import { importApkg, exportApkg } from './apkgTransfer';
+import { loadSqlJs } from './sqlJsLoader';
 import { buildStudyBuddyPrompt } from '../prompt/studyBuddy';
 import { buildErrorReviewPrompt } from '../prompt/errorReview';
 import { type App } from 'obsidian';
@@ -40,6 +44,7 @@ export class LearningCommandDispatcher {
   private spacedRepetition: SpacedRepetitionManager;
   private statsService: LearningStatsService;
   private errorNotebook: ErrorNotebook;
+  private cardManager: CardManager;
   private reviewSession: {
     cardId: string | null;
     subject?: string;
@@ -51,11 +56,12 @@ export class LearningCommandDispatcher {
     this.spacedRepetition = new SpacedRepetitionManager(this.storage);
     this.statsService = new LearningStatsService(this.storage);
     this.errorNotebook = new ErrorNotebook(this.storage);
+    this.cardManager = new CardManager(this.storage);
   }
 
   /** Returns true if the command is a learning action command */
   isLearningCommand(cmd: string): boolean {
-    return ['/flashcard', '/summary', '/map', '/plan', '/review', '/checkup', '/stats', '/mistakes', '/buddy'].includes(cmd);
+    return ['/flashcard', '/summary', '/map', '/plan', '/review', '/checkup', '/stats', '/mistakes', '/buddy', '/card'].includes(cmd);
   }
 
   async execute(cmd: string, args: string, ctx: CommandContext): Promise<string | null> {
@@ -71,6 +77,7 @@ export class LearningCommandDispatcher {
         case '/stats': result = await this.executeStats(ctx); break;
         case '/mistakes': result = await this.executeMistakes(args, ctx); break;
         case '/buddy': result = await this.executeBuddy(args, ctx); break;
+        case '/card': result = await this.executeCard(args, ctx); break;
         default: return null;
       }
       // Record activity (skip /stats since it's just viewing)
@@ -88,8 +95,14 @@ export class LearningCommandDispatcher {
   // --- /flashcard ---
 
   private async executeFlashcard(args: string, ctx: CommandContext): Promise<string> {
-    // Parse: /flashcard <subject> <topic> or /flashcard <topic>
-    const parts = args.trim().split(/\s+/);
+    // Parse: /flashcard [cloze] <subject> <topic> or /flashcard <topic>
+    const parts = args.trim().split(/\s+/).filter(Boolean);
+    let clozeMode = false;
+    if (parts[0]?.toLowerCase() === 'cloze') {
+      clozeMode = true;
+      parts.shift();
+    }
+
     let subject = '', topic = '';
     if (parts.length >= 2) {
       subject = parts[0];
@@ -104,7 +117,9 @@ export class LearningCommandDispatcher {
 
     ctx.onStatus?.(t('learning.flashcard.generating', { topic: `${subject} / ${topic}` }));
 
-    const prompt = buildFlashcardPrompt(subject, topic, ctx.materialContent);
+    const prompt = clozeMode
+      ? buildClozePrompt(subject, topic, ctx.materialContent)
+      : buildFlashcardPrompt(subject, topic, ctx.materialContent);
     const response = await this.callAI(prompt, ctx);
 
     const cards = parseFlashcards(response);
@@ -259,7 +274,9 @@ export class LearningCommandDispatcher {
       if (!this.reviewSession.cardId) {
         return t('learning.review.noActiveCard');
       }
-      const updated = await this.spacedRepetition.recordReview(this.reviewSession.cardId, quality);
+      const updated = await this.spacedRepetition.recordReview(
+        this.reviewSession.cardId, quality, ctx.settings.learning?.learningSteps ?? DEFAULT_LEARNING_STEPS
+      );
       if (!updated) {
         this.reviewSession.cardId = null;
         return t('learning.review.cardNotFound');
@@ -329,9 +346,32 @@ export class LearningCommandDispatcher {
 
   private formatReviewCard(card: ReviewEntry, index: number, total: number, subject?: string, topic?: string): string {
     const location = subject ? ` [${subject}${topic ? ' > ' + topic : ''}]` : '';
-    const header = `**📇 Review Card ${index + 1}/${total}**${location}`;
-    const question = `### Q: ${card.question}`;
-    const answer = `<details><summary>Show Answer</summary>\n\n${card.answer}\n\n</details>`;
+    const isCloze = card.type === 'cloze';
+    const typeTag = isCloze ? ' 🔤 Cloze' : '';
+
+    // Card state label
+    let stateTag = '';
+    const state = card.state ?? 'new';
+    if (state === 'learning') {
+      const steps = DEFAULT_LEARNING_STEPS;
+      stateTag = ` [📖 ${t('learning.review.stateLearning')} ${((card.stepIndex ?? 0) + 1)}/${steps.length}]`;
+    } else if (state === 'relearning') {
+      stateTag = ` [🔁 ${t('learning.review.stateRelearning')}]`;
+    } else if (state === 'graduated') {
+      stateTag = ` [🎓 ${t('learning.review.stateGraduated')}]`;
+    }
+
+    const header = `**📇 Review Card ${index + 1}/${total}**${location}${typeTag}${stateTag}`;
+
+    // Cloze cards show blanked text; QA cards show question
+    const question = isCloze
+      ? `### ${renderClozeQuestion(card.question)}`
+      : `### Q: ${card.question}`;
+
+    // Answer: cloze shows full text with highlights; QA shows plain answer
+    const answerContent = isCloze ? renderClozeAnswer(card.question) : card.answer;
+    const answer = `<details><summary>${t('learning.review.showAnswer')}</summary>\n\n${answerContent}\n\n</details>`;
+
     const meta = `*Difficulty: ${card.difficulty} | Tags: ${card.tags?.join(', ') || 'none'}*`;
     const rating = `Rate your recall: \`/review 0\` (forgot) → \`/review 5\` (perfect)`;
     return `${header}\n\n${question}\n\n${answer}\n\n${meta}\n\n${rating}`;
@@ -429,6 +469,199 @@ export class LearningCommandDispatcher {
     const buddyPrompt = buildStudyBuddyPrompt(topic);
     const response = await this.callAI(buddyPrompt, ctx);
     return t('learning.buddy.enter', { topic }) + '\n\n' + response;
+  }
+
+  // --- /card (Card Management + Import/Export) ---
+
+  private async executeCard(args: string, ctx: CommandContext): Promise<string> {
+    const tokens = args.trim().split(/\s+/).filter(Boolean);
+    const subCmd = tokens[0]?.toLowerCase() ?? '';
+
+    switch (subCmd) {
+      case 'list':
+        return this.cardManager.listCards(tokens[1]);
+
+      case 'edit': {
+        // /card edit <id> q|a <new text>
+        const id = tokens[1];
+        const field = tokens[2]?.toLowerCase();
+        const value = tokens.slice(3).join(' ');
+        if (!id || (field !== 'q' && field !== 'a') || !value) {
+          return t('learning.card.editUsage');
+        }
+        return this.cardManager.editCard(id, field as 'q' | 'a', value);
+      }
+
+      case 'delete': {
+        const id = tokens[1];
+        if (!id) return t('learning.card.deleteUsage');
+        return this.cardManager.deleteCard(id);
+      }
+
+      case 'suspend': {
+        const id = tokens[1];
+        if (!id) return t('learning.card.suspendUsage');
+        return this.cardManager.toggleSuspend(id, true);
+      }
+
+      case 'resume': {
+        const id = tokens[1];
+        if (!id) return t('learning.card.suspendUsage');
+        return this.cardManager.toggleSuspend(id, false);
+      }
+
+      case 'export':
+        return this.executeCardExport(tokens.slice(1), ctx);
+
+      case 'import':
+        return this.executeCardImport(tokens.slice(1), ctx);
+
+      default:
+        return t('learning.card.usage');
+    }
+  }
+
+  private async executeCardExport(tokens: string[], ctx: CommandContext): Promise<string> {
+    // /card export [json|apkg] [subject]
+    let format: 'csv' | 'json' | 'apkg' = 'csv';
+    let subject: string | undefined;
+
+    for (const tok of tokens) {
+      const lower = tok.toLowerCase();
+      if (lower === 'json') {
+        format = 'json';
+      } else if (lower === 'apkg') {
+        format = 'apkg';
+      } else if (!subject) {
+        subject = tok;
+      }
+    }
+
+    const schedule = await this.spacedRepetition.loadSchedule();
+    const filtered = subject
+      ? schedule.filter(e => (e.subject || '未分类') === subject)
+      : schedule;
+
+    if (filtered.length === 0) {
+      return t('learning.card.exportEmpty');
+    }
+
+    const date = LearningStorage.today();
+    const safeSubject = subject ? subject.replace(/[^a-zA-Z0-9\u4e00-\u9fff-]/g, '_').slice(0, 20) + '-' : '';
+    const fileName = `cards-${safeSubject}${date}.${format}`;
+    const filePath = `learning/exports/${fileName}`;
+
+    if (format === 'apkg') {
+      try {
+        const SQL = await loadSqlJs();
+        const buffer = await exportApkg(filtered, SQL);
+        await this.storage.writeVaultFileBinary(filePath, buffer);
+      } catch (e: unknown) {
+        const msg = e instanceof Error ? e.message : String(e);
+        console.error('[CardExport] apkg failed:', msg);
+        return t('learning.card.apkgError');
+      }
+    } else {
+      const content = format === 'json' ? exportJson(filtered) : exportCsv(filtered);
+      await this.storage.writeVaultFile(filePath, content);
+    }
+
+    return t('learning.card.exported', { count: String(filtered.length), path: filePath });
+  }
+
+  private async executeCardImport(tokens: string[], ctx: CommandContext): Promise<string> {
+    // /card import <path>
+    const filePath = tokens.join(' ');
+    if (!filePath) {
+      return t('learning.card.importUsage');
+    }
+
+    let cards: Flashcard[];
+    let scheduleEntries: ReviewEntry[] = [];
+
+    if (filePath.toLowerCase().endsWith('.apkg')) {
+      // Binary .apkg path
+      const buffer = await this.storage.readVaultFileBinary(filePath);
+      if (buffer === null) {
+        return t('learning.card.importNotFound', { path: filePath });
+      }
+      try {
+        const SQL = await loadSqlJs();
+        const result = await importApkg(buffer, SQL);
+        if (result.cards.length === 0) {
+          return t('learning.card.importParseError');
+        }
+        cards = result.cards;
+        scheduleEntries = result.scheduleEntries;
+      } catch (e: unknown) {
+        const msg = e instanceof Error ? e.message : String(e);
+        console.error('[CardImport] apkg failed:', msg);
+        return t('learning.card.apkgError');
+      }
+    } else {
+      // Text CSV/JSON path
+      const content = await this.storage.readVaultFile(filePath);
+      if (content === null) {
+        return t('learning.card.importNotFound', { path: filePath });
+      }
+
+      const format = detectFormat(content);
+      if (format === 'json') {
+        const result = parseJsonImport(content);
+        if (!result || result.cards.length === 0) {
+          return t('learning.card.importParseError');
+        }
+        cards = result.cards;
+        scheduleEntries = result.scheduleEntries;
+      } else {
+        cards = parseCsv(content);
+        if (cards.length === 0) {
+          return t('learning.card.importParseError');
+        }
+      }
+    }
+
+    // Assign subject/topic from path hint if cards lack them
+    for (const card of cards) {
+      if (!card.subject) card.subject = '未分类';
+      if (!card.topic) card.topic = 'imported';
+    }
+
+    // Add to index (dedup by id)
+    const index = await this.storage.readJson<Flashcard[]>('flashcards/index.json', []);
+    const existingIds = new Set(index.map(c => c.id));
+    const newCards = cards.filter(c => !existingIds.has(c.id));
+    if (newCards.length > 0) {
+      index.push(...newCards);
+      await this.storage.writeJson('flashcards/index.json', index);
+    }
+
+    // Add to schedule: JSON/apkg imports restore full state; CSV imports add as new
+    if (scheduleEntries.length > 0) {
+      const schedule = await this.spacedRepetition.loadSchedule();
+      const schedIds = new Set(schedule.map(e => e.cardId));
+      const newEntries = scheduleEntries.filter(e => !schedIds.has(e.cardId));
+      if (newEntries.length > 0) {
+        schedule.push(...newEntries);
+        await this.spacedRepetition.saveSchedule(schedule);
+      }
+    } else {
+      await this.spacedRepetition.addCards(newCards);
+    }
+
+    const skipped = cards.length - newCards.length;
+    const clozeCount = newCards.filter(c => c.type === 'cloze').length;
+    if (filePath.toLowerCase().endsWith('.apkg')) {
+      return t('learning.card.apkgImported', {
+        count: String(newCards.length),
+        cloze: String(clozeCount),
+        skipped: String(skipped),
+      });
+    }
+    return t('learning.card.imported', {
+      count: String(newCards.length),
+      skipped: String(skipped),
+    });
   }
 
   // --- AI Call Helper ---

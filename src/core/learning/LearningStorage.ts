@@ -69,6 +69,23 @@ export class LearningStorage {
     }
   }
 
+  // --- Binary vault file operations (for .apkg) ---
+
+  async readVaultFileBinary(path: string): Promise<ArrayBuffer | null> {
+    try {
+      if (await this.adapter.exists(path)) {
+        return await this.adapter.readBinary(path);
+      }
+    } catch { /* ignore */ }
+    return null;
+  }
+
+  async writeVaultFileBinary(path: string, data: ArrayBuffer): Promise<void> {
+    const dir = path.substring(0, path.lastIndexOf('/'));
+    await this.ensureDir(dir);
+    await this.adapter.writeBinary(path, data);
+  }
+
   // --- Utility ---
 
   private async ensureDir(dirPath: string): Promise<void> {

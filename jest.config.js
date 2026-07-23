@@ -7,6 +7,7 @@ module.exports = {
   },
   moduleNameMapper: {
     '^obsidian$': '<rootDir>/tests/__mocks__/obsidian.ts',
+    '^sql\\.js/dist/sql-wasm\\.wasm$': '<rootDir>/tests/__mocks__/wasm.ts',
   },
   testMatch: ['**/*.test.ts'],
 };
