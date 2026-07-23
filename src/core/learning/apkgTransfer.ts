@@ -113,15 +113,24 @@ const REMOVE_WITH_CONTENT = /<(script|style|iframe|object|embed|form|input|texta
 /** Self-closing media tags to remove entirely. */
 const REMOVE_MEDIA_SELF = /<(img|source|audio|video)\b[^>]*\/?>/gi;
 
-/** Tags allowed in sanitized output (safe formatting tags). */
+/** Tags allowed in sanitized output (safe formatting tags, including Anki-common HTML4 tags). */
 const ALLOWED_TAGS = new Set([
+  // Text formatting
   'b', 'i', 'u', 's', 'em', 'strong', 'sub', 'sup', 'small', 'mark',
+  'font', 'center', 'strike', 'tt', 'kbd', 'abbr', 'cite', 'q',
+  'del', 'ins', 'dfn', 'var', 'samp',
+  // Line/structure
   'br', 'hr', 'wbr',
   'p', 'div', 'span', 'blockquote', 'pre', 'code',
   'h1', 'h2', 'h3', 'h4', 'h5', 'h6',
+  // Lists
   'ul', 'ol', 'li', 'dl', 'dt', 'dd',
+  // Tables
   'table', 'thead', 'tbody', 'tfoot', 'tr', 'th', 'td', 'caption', 'colgroup', 'col',
+  // Links and annotations
   'a', 'ruby', 'rt', 'rp',
+  // Figure/caption
+  'figure', 'figcaption',
 ]);
 
 /** Sanitize HTML: keep safe formatting tags, strip dangerous/media tags, preserve styling. */

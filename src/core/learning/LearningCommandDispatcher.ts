@@ -751,7 +751,14 @@ export class LearningCommandDispatcher {
       const card = cards[i];
       const isCloze = card.type === 'cloze';
       md += `## ${isCloze ? '🔤' : 'Q'}${i + 1}: ${card.question}\n\n`;
-      md += `**A:** ${card.answer}\n\n`;
+      // Detect block-level HTML: if answer starts with a block tag, put it on its own line
+      // (markdown requires block HTML to be on a separate line for proper rendering)
+      const hasBlockHtml = /^\s*<(div|p|table|ul|ol|blockquote|pre|h[1-6]|center|figure)/i.test(card.answer);
+      if (hasBlockHtml) {
+        md += `${card.answer}\n\n`;
+      } else {
+        md += `**A:** ${card.answer}\n\n`;
+      }
       if (card.tags?.length) md += `*Tags: ${card.tags.join(', ')}*\n\n`;
       md += '---\n\n';
     }
