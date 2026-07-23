@@ -516,6 +516,9 @@ export class LearningCommandDispatcher {
       case 'import':
         return this.executeCardImport(tokens.slice(1), ctx);
 
+      case 'help':
+        return t('learning.card.help');
+
       default:
         return t('learning.card.usage');
     }

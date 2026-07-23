@@ -44,6 +44,7 @@ const BASE_SLASH_COMMANDS = [
   { cmd: '/stats', descKey: 'cmd.stats' as I18nKey, category: 'learning' as const },
   { cmd: '/mistakes', descKey: 'cmd.mistakes' as I18nKey, category: 'learning' as const },
   { cmd: '/buddy', descKey: 'cmd.buddy' as I18nKey, category: 'learning' as const },
+  { cmd: '/card', descKey: 'cmd.card' as I18nKey, category: 'learning' as const },
 ];
 
 function getAllSlashCommands(): Array<{ cmd: string; desc: string; category: string }> {
@@ -681,6 +682,28 @@ export class ChatView extends ItemView {
       t('help.commands.audio'),
       t('help.commands.feynman'),
       t('help.commands.mock'),
+    ]);
+
+    addSection(t('help.actions.heading'), [
+      t('help.actions.1'),
+      t('help.actions.flashcard'),
+      t('help.actions.summary'),
+      t('help.actions.map'),
+      t('help.actions.plan'),
+      t('help.actions.review'),
+      t('help.actions.checkup'),
+      t('help.actions.stats'),
+      t('help.actions.mistakes'),
+      t('help.actions.buddy'),
+    ]);
+
+    addSection(t('help.card.heading'), [
+      t('help.card.1'),
+      t('help.card.edit'),
+      t('help.card.delete'),
+      t('help.card.suspend'),
+      t('help.card.export'),
+      t('help.card.import'),
     ]);
 
     addSection(t('help.reference.heading'), [

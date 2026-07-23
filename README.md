@@ -13,7 +13,12 @@ An AI learning assistant embedded directly in your Obsidian vault. It makes dire
 - **Learning roles** — Private Tutor, Socratic Tutor (STEM), Language Partner (Humanities)
 - **8 learning method commands** — `/guide`, `/quiz`, `/confuse`, `/gap`, `/predict`, `/audio`, `/feynman`, `/mock`
 - **9 learning action commands** — `/flashcard`, `/summary`, `/map`, `/plan`, `/review`, `/checkup`, `/stats`, `/mistakes`, `/buddy`
+- **Card management commands** — `/card list`, `/card edit`, `/card delete`, `/card suspend`, `/card resume`, `/card export`, `/card import`, `/card help`
 - **Subject + topic classification** — flashcards organized by subject (e.g. `/flashcard 物理 量子力学`), review by subject
+- **Cloze deletion cards** — `/flashcard cloze <subject> <topic>` generates `{{c1::...}}` fill-in-the-blank cards
+- **Learning steps scheduling** — new cards go through 10min → 1d steps before graduating to SM-2 spaced repetition
+- **Card management** — `/card list`, `/card edit`, `/card delete`, `/card suspend`/`resume` for full card lifecycle control
+- **Import/Export** — `/card export [json|apkg]` exports to CSV (Anki-compatible), JSON (full fidelity), or Anki `.apkg`; `/card import <path>` imports from any supported format
 - **Spaced repetition** — SM-2 algorithm schedules flashcard reviews automatically, filter by subject/topic
 - **Error notebook** — collects quiz mistakes for targeted review
 - **Learning statistics** — track flashcards, reviews, quizzes, and activity streak
@@ -77,6 +82,7 @@ Type `/` in the input box to see commands. These wrap your query with a study-fo
 These call AI and save results to your vault:
 
 - `/flashcard <subject> <topic>` — generate flashcard Q&A cards (e.g. `/flashcard Physics Quantum Mechanics`), organized by subject subfolder
+- `/flashcard cloze <subject> <topic>` — generate cloze deletion cards with `{{c1::...}}` syntax
 - `/summary` — generate a summary of the current conversation
 - `/map quantum mechanics` — generate a Mermaid knowledge concept map
 - `/plan quantum mechanics` — generate a phased learning plan (uses chat history + material for personalization)
@@ -85,6 +91,13 @@ These call AI and save results to your vault:
 - `/stats` — show learning statistics dashboard
 - `/mistakes` — review error notebook entries
 - `/buddy quantum mechanics` — enter study buddy mode (AI acts as a confused classmate)
+- `/card help` — show all card management commands with detailed format
+- `/card list [subject]` — list cards with ID, type, state
+- `/card edit <id> q|a <text>` — edit a card's question or answer
+- `/card delete <id>` — permanently remove a card
+- `/card suspend <id>` / `/card resume <id>` — pause/resume a card in the review queue
+- `/card export [json|apkg] [subject]` — export to CSV, JSON, or Anki `.apkg`
+- `/card import <path>` — import from CSV, JSON, or `.apkg` file
 
 ### Reference files
 
