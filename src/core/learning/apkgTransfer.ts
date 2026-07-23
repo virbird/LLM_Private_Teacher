@@ -594,7 +594,7 @@ export async function importApkg(buffer: ArrayBuffer, SQL: SqlJsStatic): Promise
       const model = modelMap[mid];
       if (model) {
         const renderedHtml = renderAnkiTemplate(model.afmt, fields, model.fieldNames, rawTags);
-        renderedAnswers[cardId] = stripInlineStyles(sanitizeHtml(renderedHtml));
+        renderedAnswers[cardId] = sanitizeHtml(renderedHtml);
       }
 
       scheduleEntries.push({
