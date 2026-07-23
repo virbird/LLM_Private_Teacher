@@ -172,13 +172,23 @@ describe('apkg export/import round-trip', () => {
     expect(result.cards[0].tags).toContain('basic');
   });
 
-  it('strips HTML on import', async () => {
-    const entries = [entry({ question: '<b>Bold</b> question<br>with break', answer: 'A <i>fancy</i> answer' })];
+  it('preserves safe HTML formatting on import', async () => {
+    const entries = [entry({ question: '<b>Bold</b> question', answer: 'A <i>fancy</i> answer' })];
     const buffer = await exportApkg(entries, SQL);
     const result = await importApkg(buffer, SQL);
-    // Export writes plain text; import strips (no-op since already plain)
-    expect(result.cards[0].question).toContain('Bold question');
-    expect(result.cards[0].answer).toContain('A fancy answer');
+    // sanitizeHtml preserves safe formatting tags
+    expect(result.cards[0].question).toContain('<b>Bold</b>');
+    expect(result.cards[0].answer).toContain('<i>fancy</i>');
+  });
+
+  it('strips dangerous HTML on import', async () => {
+    const entries = [entry({ question: 'Normal question', answer: 'Safe <b>text</b><script>alert("xss")</script><img src="x.png">' })];
+    const buffer = await exportApkg(entries, SQL);
+    const result = await importApkg(buffer, SQL);
+    expect(result.cards[0].answer).toContain('<b>text</b>');
+    expect(result.cards[0].answer).not.toContain('<script>');
+    expect(result.cards[0].answer).not.toContain('<img');
+    expect(result.cards[0].answer).not.toContain('alert');
   });
 
   it('handles empty entries', async () => {

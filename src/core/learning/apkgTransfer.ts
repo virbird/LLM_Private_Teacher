@@ -105,6 +105,50 @@ export function fieldChecksum(field: string): number {
   return parseInt(sha1Hex(normalized).slice(0, 8), 16);
 }
 
+// --- HTML sanitization (preserve safe formatting, strip dangerous/media tags) ---
+
+/** Tags whose content should be removed entirely (including inner text). */
+const REMOVE_WITH_CONTENT = /<(script|style|iframe|object|embed|form|input|textarea|button|select)[^>]*>[\s\S]*?<\/\1>/gi;
+
+/** Self-closing media tags to remove entirely. */
+const REMOVE_MEDIA_SELF = /<(img|source|audio|video)\b[^>]*\/?>/gi;
+
+/** Tags allowed in sanitized output (safe formatting tags). */
+const ALLOWED_TAGS = new Set([
+  'b', 'i', 'u', 's', 'em', 'strong', 'sub', 'sup', 'small', 'mark',
+  'br', 'hr', 'wbr',
+  'p', 'div', 'span', 'blockquote', 'pre', 'code',
+  'h1', 'h2', 'h3', 'h4', 'h5', 'h6',
+  'ul', 'ol', 'li', 'dl', 'dt', 'dd',
+  'table', 'thead', 'tbody', 'tfoot', 'tr', 'th', 'td', 'caption', 'colgroup', 'col',
+  'a', 'ruby', 'rt', 'rp',
+]);
+
+/** Sanitize HTML: keep safe formatting tags, strip dangerous/media tags, preserve styling. */
+export function sanitizeHtml(html: string): string {
+  let text = html;
+  // Remove dangerous elements with their content
+  text = text.replace(REMOVE_WITH_CONTENT, '');
+  // Remove media tags (img/audio/video)
+  text = text.replace(REMOVE_MEDIA_SELF, '');
+  // Remove Anki [sound:] tags
+  text = text.replace(/\[sound:[^\]]*\]/gi, '');
+  // Strip disallowed tags (keep content, remove tags)
+  text = text.replace(/<\/?([a-zA-Z][a-zA-Z0-9]*)\b[^>]*\/?>/g, (match, tag: string) => {
+    return ALLOWED_TAGS.has(tag.toLowerCase()) ? match : '';
+  });
+  // Remove dangerous attributes: onclick, onerror, onload, on*, javascript: URLs
+  text = text.replace(/\s+on\w+\s*=\s*(?:"[^"]*"|'[^']*'|[^\s>]*)/gi, '');
+  text = text.replace(/javascript\s*:/gi, '');
+  // Decode common entities
+  text = text
+    .replace(/&nbsp;/gi, ' ')
+    .replace(/&amp;/gi, '&amp;');  // keep &amp; as-is to avoid double-decode in HTML context
+  // Collapse excessive blank lines
+  text = text.replace(/\n{3,}/g, '\n\n');
+  return text.trim();
+}
+
 // --- GUID generation (Anki uses base91) ---
 
 const BASE91 = 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789!#$%&()*+,-./:;<=>?@[]^_`{|}~';
@@ -361,11 +405,11 @@ export async function importApkg(buffer: ArrayBuffer, SQL: SqlJsStatic): Promise
       if (!firstField.trim()) continue;
 
       const isCloze = /\{\{c\d+::/.test(firstField);
-      const question = stripHtml(firstField);
-      // Concatenate all remaining fields as the answer (vocab decks often have 3+ fields: word, pronunciation, definition, example, etc.)
+      // Use sanitizeHtml to preserve rich formatting (bold, colors, tables) while stripping dangerous content
+      const question = isCloze ? firstField : sanitizeHtml(firstField);
       const answer = isCloze
         ? extractClozeAnswers(firstField)
-        : fields.slice(1).map(f => stripHtml(f)).filter(Boolean).join('\n\n');
+        : fields.slice(1).map(f => sanitizeHtml(f)).filter(Boolean).join('<br>\n');
       const tagList = rawTags.trim().split(/\s+/).filter(Boolean);
 
       // Compute next review date from Anki scheduling
