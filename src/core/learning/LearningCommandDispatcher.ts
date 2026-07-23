@@ -654,6 +654,12 @@ export class LearningCommandDispatcher {
 
     const skipped = cards.length - newCards.length;
     const clozeCount = newCards.filter(c => c.type === 'cloze').length;
+
+    // Generate a visible .md file in learning/flashcards/ for vault browsing
+    if (newCards.length > 0) {
+      await this.writeImportedFlashcardMd(newCards, filePath);
+    }
+
     if (filePath.toLowerCase().endsWith('.apkg')) {
       return t('learning.card.apkgImported', {
         count: String(newCards.length),
@@ -717,5 +723,32 @@ export class LearningCommandDispatcher {
       md += '---\n\n';
     }
     return md;
+  }
+
+  /** Write imported cards as a visible .md file in learning/flashcards/ for vault browsing */
+  private async writeImportedFlashcardMd(cards: Flashcard[], sourcePath: string): Promise<void> {
+    const folder = 'learning/flashcards';
+    const date = LearningStorage.today();
+    // Derive a safe name from the source filename
+    const baseName = sourcePath
+      .replace(/^.*[\\/]/, '')           // strip directory
+      .replace(/\.[^.]+$/, '')           // strip extension
+      .replace(/[^a-zA-Z0-9\u4e00-\u9fff_-]/g, '_')
+      .slice(0, 40);
+    const subject = cards[0]?.subject || '未分类';
+    const safeSubject = subject.replace(/[^a-zA-Z0-9\u4e00-\u9fff-]/g, '_').slice(0, 30);
+    const filePath = `${folder}/${safeSubject}/${baseName}-${date}.md`;
+
+    let md = `# Imported Flashcards: ${baseName}\n\n*Source: ${sourcePath}*\n*Imported: ${date}*\n*Cards: ${cards.length}*\n\n---\n\n`;
+    for (let i = 0; i < cards.length; i++) {
+      const card = cards[i];
+      const isCloze = card.type === 'cloze';
+      md += `## ${isCloze ? '🔤' : 'Q'}${i + 1}: ${card.question}\n\n`;
+      md += `**A:** ${card.answer}\n\n`;
+      if (card.tags?.length) md += `*Tags: ${card.tags.join(', ')}*\n\n`;
+      md += '---\n\n';
+    }
+
+    await this.storage.writeVaultFile(filePath, md);
   }
 }
