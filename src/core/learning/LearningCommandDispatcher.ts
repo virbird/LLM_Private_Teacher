@@ -668,7 +668,16 @@ export class LearningCommandDispatcher {
     // Generate a visible .md file in learning/flashcards/ for vault browsing
     const cardsForMd = force ? cards : newCards;
     if (cardsForMd.length > 0) {
-      await this.writeImportedFlashcardMd(cardsForMd, filePath, modelCss, renderedAnswers);
+      await this.writeImportedFlashcardMd(cardsForMd, filePath, renderedAnswers);
+    }
+
+    // Save Anki CSS to Obsidian snippets directory for class-based styling
+    let cssSaved = false;
+    if (modelCss) {
+      try {
+        await this.storage.writeVaultFile('.obsidian/snippets/anki-flashcards.css', modelCss);
+        cssSaved = true;
+      } catch { /* snippets dir might not exist; ignore */ }
     }
 
     if (filePath.toLowerCase().endsWith('.apkg')) {
@@ -676,7 +685,7 @@ export class LearningCommandDispatcher {
         count: String(newCards.length),
         cloze: String(clozeCount),
         skipped: String(skipped),
-      });
+      }) + (cssSaved ? '\n\n' + t('learning.card.cssSnippetSaved') : '');
     }
     return t('learning.card.imported', {
       count: String(newCards.length),
@@ -739,7 +748,7 @@ export class LearningCommandDispatcher {
   /** Write imported cards as a visible .md file in learning/flashcards/ for vault browsing */
   private async writeImportedFlashcardMd(
     cards: Flashcard[], sourcePath: string,
-    modelCss?: string, renderedAnswers?: Record<string, string>,
+    renderedAnswers?: Record<string, string>,
   ): Promise<void> {
     const folder = 'learning/flashcards';
     const date = LearningStorage.today();
@@ -754,11 +763,6 @@ export class LearningCommandDispatcher {
     const filePath = `${folder}/${safeSubject}/${baseName}-${date}.md`;
 
     let md = `# Imported Flashcards: ${baseName}\n\n*Source: ${sourcePath}*\n*Imported: ${date}*\n*Cards: ${cards.length}*\n\n---\n\n`;
-
-    // Embed Anki model CSS for original styling (colored sections, fonts, layout)
-    if (modelCss) {
-      md += `<style>\n${modelCss}\n</style>\n\n---\n\n`;
-    }
 
     for (let i = 0; i < cards.length; i++) {
       const card = cards[i];

@@ -99,6 +99,84 @@ export function stripHtml(html: string): string {
   return text.trim();
 }
 
+/** Convert HTML to Obsidian-compatible Markdown (callouts, bold, lists, tables). */
+export function htmlToMarkdown(html: string): string {
+  let text = html;
+  // Remove dangerous elements with their content
+  text = text.replace(/<(script|style|iframe|object|embed|form|input|textarea|button|select)[^>]*>[\s\S]*?<\/\1>/gi, '');
+  // Remove media tags
+  text = text.replace(/<(img|source|audio|video)\b[^>]*\/?>/gi, '');
+  text = text.replace(/\[sound:[^\]]*\]/gi, '');
+  // Remove <style> blocks entirely (Obsidian ignores them)
+  text = text.replace(/<style[^>]*>[\s\S]*?<\/style>/gi, '');
+
+  // Convert formatting tags to markdown
+  text = text.replace(/<(b|strong)\b[^>]*>([\s\S]*?)<\/\1>/gi, '**$2**');
+  text = text.replace(/<(i|em)\b[^>]*>([\s\S]*?)<\/\1>/gi, '*$2*');
+  text = text.replace(/<(u|ins)\b[^>]*>([\s\S]*?)<\/\1>/gi, '$2');  // no markdown equivalent, keep text
+  text = text.replace(/<(s|strike|del)\b[^>]*>([\s\S]*?)<\/\1>/gi, '~~$2~~');
+  text = text.replace(/<code\b[^>]*>([\s\S]*?)<\/code>/gi, '`$1`');
+
+  // Convert headings
+  text = text.replace(/<h([1-6])\b[^>]*>([\s\S]*?)<\/h\1>/gi, (_, level: string, content: string) => {
+    return '\n' + '#'.repeat(Number(level)) + ' ' + content.trim() + '\n';
+  });
+
+  // Convert <hr> to markdown
+  text = text.replace(/<hr\b[^>]*\/?>/gi, '\n---\n');
+
+  // Convert <br> to newline
+  text = text.replace(/<br\s*\/?>/gi, '\n');
+
+  // Convert list items
+  text = text.replace(/<li\b[^>]*>([\s\S]*?)<\/li>/gi, '- $1\n');
+  text = text.replace(/<\/?(ul|ol)\b[^>]*>/gi, '\n');
+
+  // Convert blockquotes
+  text = text.replace(/<blockquote\b[^>]*>([\s\S]*?)<\/blockquote>/gi, (_, content: string) => {
+    return content.split('\n').map((l: string) => '> ' + l).join('\n') + '\n';
+  });
+
+  // Convert divs/p to paragraph breaks (with content preservation)
+  text = text.replace(/<(div|p)\b[^>]*>/gi, '\n');
+  text = text.replace(/<\/(div|p)>/gi, '\n');
+
+  // Convert <font> tags — keep content, drop color (markdown can't do colors)
+  text = text.replace(/<font\b[^>]*>([\s\S]*?)<\/font>/gi, '$1');
+
+  // Convert links
+  text = text.replace(/<a\b[^>]*href=["']([^"']*)["'][^>]*>([\s\S]*?)<\/a>/gi, '[$2]($1)');
+
+  // Convert tables to markdown tables (simple case)
+  text = text.replace(/<tr\b[^>]*>([\s\S]*?)<\/tr>/gi, (_, row: string) => {
+    const cells = [...row.matchAll(/<t[hd]\b[^>]*>([\s\S]*?)<\/t[hd]>/gi)].map(m => m[1].trim());
+    return '| ' + cells.join(' | ') + ' |\n';
+  });
+  text = text.replace(/<\/?(table|thead|tbody|tfoot|caption|colgroup|col)\b[^>]*>/gi, '\n');
+
+  // Strip all remaining tags (keep inner text)
+  text = text.replace(/<[^>]+>/g, '');
+
+  // Decode HTML entities
+  text = text
+    .replace(/&nbsp;/gi, ' ')
+    .replace(/&lt;/gi, '<')
+    .replace(/&gt;/gi, '>')
+    .replace(/&quot;/gi, '"')
+    .replace(/&#39;/g, "'")
+    .replace(/&amp;/gi, '&');
+
+  // Clean up: collapse excessive blank lines, trim trailing spaces
+  text = text.replace(/\n{3,}/g, '\n\n');
+  text = text.replace(/^[ \t]+/gm, (match: string) => match.replace(/\t/g, '  '));
+  return text.trim();
+}
+
+/** Remove inline style="..." attributes (Obsidian ignores them) but keep class attributes for CSS snippets. */
+export function stripInlineStyles(html: string): string {
+  return html.replace(/\s+style\s*=\s*(?:"[^"]*"|'[^']*'|[^\s>]*)/gi, '');
+}
+
 /** Anki field checksum: first 8 hex chars of SHA-1 of the normalized field, as an integer. */
 export function fieldChecksum(field: string): number {
   const normalized = stripHtml(field).replace(/\s+/g, ' ').trim().normalize('NFC');
@@ -516,7 +594,7 @@ export async function importApkg(buffer: ArrayBuffer, SQL: SqlJsStatic): Promise
       const model = modelMap[mid];
       if (model) {
         const renderedHtml = renderAnkiTemplate(model.afmt, fields, model.fieldNames, rawTags);
-        renderedAnswers[cardId] = sanitizeHtml(renderedHtml);
+        renderedAnswers[cardId] = stripInlineStyles(sanitizeHtml(renderedHtml));
       }
 
       scheduleEntries.push({

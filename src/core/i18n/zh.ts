@@ -296,6 +296,7 @@ export const zh = {
   'learning.card.imported': '✅ 已导入 {count} 张卡片（跳过 {skipped} 张重复）。',
   'learning.card.apkgImported': '✅ 已从 .apkg 导入 {count} 张卡片（{cloze} 张填空卡，跳过 {skipped} 张重复）。',
   'learning.card.apkgError': '⚠️ 处理 .apkg 文件失败。请确认它是有效的 Anki 包。',
+  'learning.card.cssSnippetSaved': '🎨 Anki CSS 已保存到 `.obsidian/snippets/anki-flashcards.css`。请到 设置 → 外观 → CSS 代码片段 中启用它，以恢复原始卡片样式。',
 
   // --- Context compression ---
   'context.compressing': '📦 压缩上下文中...',

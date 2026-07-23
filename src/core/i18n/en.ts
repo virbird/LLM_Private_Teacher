@@ -296,6 +296,7 @@ export const en = {
   'learning.card.imported': '✅ Imported {count} cards ({skipped} duplicates skipped).',
   'learning.card.apkgImported': '✅ Imported {count} cards from .apkg ({cloze} cloze, {skipped} duplicates skipped).',
   'learning.card.apkgError': '⚠️ Failed to process the .apkg file. Ensure it is a valid Anki package.',
+  'learning.card.cssSnippetSaved': '🎨 Anki CSS saved to `.obsidian/snippets/anki-flashcards.css`. Go to Settings → Appearance → CSS Snippets and enable it for original card styling.',
 
   // --- Context compression ---
   'context.compressing': '📦 Compressing context...',
