@@ -290,7 +290,7 @@ export const zh = {
   'learning.card.suspendUsage': '用法：`/card suspend <id>` 或 `/card resume <id>`',
   'learning.card.exportEmpty': '📭 没有可导出的卡片。',
   'learning.card.exported': '✅ 已导出 {count} 张卡片 → {path}',
-  'learning.card.importUsage': '用法：`/card import <路径>`（仓库中的 CSV 或 JSON 文件）',
+  'learning.card.importUsage': '用法：`/card import <路径> [force]`（仓库或文件系统中的 CSV、JSON 或 .apkg 文件；加 `force` 可强制重新生成 .md 即使卡片已存在）',
   'learning.card.importNotFound': '⚠️ 文件未找到：{path}',
   'learning.card.importParseError': '⚠️ 无法解析文件。支持格式：CSV (Front,Back,Tags,Type) 或 JSON 导出格式。',
   'learning.card.imported': '✅ 已导入 {count} 张卡片（跳过 {skipped} 张重复）。',

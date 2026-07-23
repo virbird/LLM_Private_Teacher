@@ -290,7 +290,7 @@ export const en = {
   'learning.card.suspendUsage': 'Usage: `/card suspend <id>` or `/card resume <id>`',
   'learning.card.exportEmpty': '📭 No cards to export.',
   'learning.card.exported': '✅ Exported {count} cards → {path}',
-  'learning.card.importUsage': 'Usage: `/card import <path>` (CSV or JSON file in your vault)',
+  'learning.card.importUsage': 'Usage: `/card import <path> [force]` (CSV, JSON, or .apkg file in your vault or filesystem; add `force` to regenerate .md even if cards already exist)',
   'learning.card.importNotFound': '⚠️ File not found: {path}',
   'learning.card.importParseError': '⚠️ Could not parse the file. Supported formats: CSV (Front,Back,Tags,Type) or JSON export.',
   'learning.card.imported': '✅ Imported {count} cards ({skipped} duplicates skipped).',

@@ -573,7 +573,13 @@ export class LearningCommandDispatcher {
   }
 
   private async executeCardImport(tokens: string[], ctx: CommandContext): Promise<string> {
-    // /card import <path>
+    // /card import <path> [force]
+    let force = false;
+    if (tokens[tokens.length - 1]?.toLowerCase() === 'force') {
+      force = true;
+      tokens = tokens.slice(0, -1);
+    }
+
     const filePath = tokens.join(' ');
     if (!filePath) {
       return t('learning.card.importUsage');
@@ -656,8 +662,9 @@ export class LearningCommandDispatcher {
     const clozeCount = newCards.filter(c => c.type === 'cloze').length;
 
     // Generate a visible .md file in learning/flashcards/ for vault browsing
-    if (newCards.length > 0) {
-      await this.writeImportedFlashcardMd(newCards, filePath);
+    const cardsForMd = force ? cards : newCards;
+    if (cardsForMd.length > 0) {
+      await this.writeImportedFlashcardMd(cardsForMd, filePath);
     }
 
     if (filePath.toLowerCase().endsWith('.apkg')) {
