@@ -230,7 +230,7 @@ export const en = {
 
   // --- Learning commands ---
   'learning.flashcard.generating': 'Generating flashcards for {topic}...',
-  'learning.flashcard.saved': '✅ Generated {count} flashcards → {path}',
+  'learning.flashcard.saved': '✅ Generated {count} flashcards → {path}\n\n💡 Use `/card list` to browse, `/review` to study, or `/card export` to export.',
   'learning.flashcard.parseError': '⚠️ Could not parse flashcards from AI response. Please try again.',
   'learning.flashcard.noContent': 'No learning content available to generate flashcards.',
   'learning.summary.generating': 'Generating learning summary...',
@@ -269,7 +269,7 @@ export const en = {
   'learning.review.stateRelearning': 'Relearning',
   'learning.review.stateGraduated': 'Graduated',
   'learning.card.help': '**📇 Card Management — Detailed Command Reference**\n\n**List & Browse:**\n- `/card list` — show all cards as table (ID, Type, State, Question)\n- `/card list Physics` — filter by subject\n\n**Edit & Delete:**\n- `/card edit <id> q <new question>` — update question\n- `/card edit <id> a <new answer>` — update answer\n- `/card delete <id>` — permanently remove a card\n\n**Suspend / Resume:**\n- `/card suspend <id>` — pause card (excluded from review queue)\n- `/card resume <id>` — unpause card\n\n**Export:**\n- `/card export` — export all cards as CSV (Anki-compatible: Front,Back,Tags,Type)\n- `/card export json` — export as JSON (includes full scheduling state)\n- `/card export apkg` — export as .apkg (Anki package, text-only)\n- `/card export apkg Physics` — export only Physics cards as .apkg\n\n**Import:**\n- `/card import learning/exports/cards.csv` — import CSV\n- `/card import learning/exports/cards.json` — import JSON (restores scheduling)\n- `/card import my-deck.apkg` — import Anki .apkg (text-only, media stripped)\n\n**Notes:**\n- `<id>` can be the full ID or just the **last 6 characters** shown in `/card list`\n- Cloze cards are generated with `/flashcard cloze <subject> <topic>`\n- .apkg import/export strips images/audio (text-only mode)',
-  'learning.card.usage': '📇 **Card Management**\n\n- `/card help` — show detailed command reference\n- `/card list [subject]` — list cards\n- `/card edit <id> q|a <text>` — edit question or answer\n- `/card delete <id>` — delete a card\n- `/card suspend <id>` — suspend a card (remove from review queue)\n- `/card resume <id>` — resume a suspended card\n- `/card export [json|apkg] [subject]` — export cards (CSV, JSON, or Anki .apkg)\n- `/card import <path>` — import cards from a vault file (CSV/JSON/.apkg)',
+  'learning.card.usage': '📇 **Card Management**\n\n- `/card help` — show detailed command reference\n- `/card list [subject]` — list cards\n- `/card edit <id> q|a <text>` — edit question or answer\n- `/card delete <id>` — delete a card\n- `/card suspend <id>` — suspend a card (remove from review queue)\n- `/card resume <id>` — resume a suspended card\n- `/card export [json|apkg] [subject]` — export cards (CSV, JSON, or Anki .apkg)\n- `/card import <path>` — import cards from a vault file (CSV/JSON/.apkg)\n\n💡 Use `/flashcard <subject> <topic>` to generate new cards, or `/review` to study.',
   'learning.card.listEmpty': '📭 No cards found. Generate some with `/flashcard <subject> <topic>` first.',
   'learning.card.colType': 'Type',
   'learning.card.colState': 'State',

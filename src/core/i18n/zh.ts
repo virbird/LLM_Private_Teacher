@@ -230,7 +230,7 @@ export const zh = {
 
   // --- Learning commands ---
   'learning.flashcard.generating': '正在生成 {topic} 的闪卡...',
-  'learning.flashcard.saved': '✅ 已生成 {count} 张闪卡 → {path}',
+  'learning.flashcard.saved': '✅ 已生成 {count} 张闪卡 → {path}\n\n💡 用 `/card list` 浏览卡片，`/review` 开始复习，或 `/card export` 导出。',
   'learning.flashcard.parseError': '⚠️ 无法解析 AI 返回的闪卡内容，请重试。',
   'learning.flashcard.noContent': '没有可用的学习内容来生成闪卡。',
   'learning.summary.generating': '正在生成学习总结...',
@@ -269,7 +269,7 @@ export const zh = {
   'learning.review.stateRelearning': '重学中',
   'learning.review.stateGraduated': '已毕业',
   'learning.card.help': '**📇 卡片管理 — 详细命令参考**\n\n**列表与浏览:**\n- `/card list` — 以表格显示所有卡片（ID、类型、状态、问题）\n- `/card list 物理` — 按学科筛选\n\n**编辑与删除:**\n- `/card edit <id> q <新问题>` — 更新问题\n- `/card edit <id> a <新答案>` — 更新答案\n- `/card delete <id>` — 永久删除卡片\n\n**暂停 / 恢复:**\n- `/card suspend <id>` — 暂停卡片（从复习队列排除）\n- `/card resume <id>` — 恢复卡片\n\n**导出:**\n- `/card export` — 导出所有卡片为 CSV（Anki 兼容：Front,Back,Tags,Type）\n- `/card export json` — 导出为 JSON（含完整调度状态）\n- `/card export apkg` — 导出为 .apkg（Anki 包，仅文本）\n- `/card export apkg 物理` — 仅导出物理卡片为 .apkg\n\n**导入:**\n- `/card import learning/exports/cards.csv` — 导入 CSV\n- `/card import learning/exports/cards.json` — 导入 JSON（恢复调度状态）\n- `/card import my-deck.apkg` — 导入 Anki .apkg（仅文本，媒体剥离）\n\n**说明:**\n- `<id>` 可以是完整 ID 或 `/card list` 中显示的**后 6 位**\n- 填空卡用 `/flashcard cloze <学科> <主题>` 生成\n- .apkg 导入导出去除图片/音频（仅文本模式）',
-  'learning.card.usage': '📇 **卡片管理**\n\n- `/card help` — 查看详细命令参考\n- `/card list [学科]` — 列出卡片\n- `/card edit <id> q|a <文本>` — 编辑问题或答案\n- `/card delete <id>` — 删除卡片\n- `/card suspend <id>` — 暂停卡片（从复习队列移除）\n- `/card resume <id>` — 恢复暂停的卡片\n- `/card export [json|apkg] [学科]` — 导出卡片（CSV、JSON 或 Anki .apkg）\n- `/card import <路径>` — 从仓库文件导入卡片（CSV/JSON/.apkg）',
+  'learning.card.usage': '📇 **卡片管理**\n\n- `/card help` — 查看详细命令参考\n- `/card list [学科]` — 列出卡片\n- `/card edit <id> q|a <文本>` — 编辑问题或答案\n- `/card delete <id>` — 删除卡片\n- `/card suspend <id>` — 暂停卡片（从复习队列移除）\n- `/card resume <id>` — 恢复暂停的卡片\n- `/card export [json|apkg] [学科]` — 导出卡片（CSV、JSON 或 Anki .apkg）\n- `/card import <路径>` — 从仓库文件导入卡片（CSV/JSON/.apkg）\n\n💡 用 `/flashcard <学科> <主题>` 生成新卡片，或 `/review` 开始复习。',
   'learning.card.listEmpty': '📭 没有找到卡片。先用 `/flashcard <学科> <主题>` 生成一些吧。',
   'learning.card.colType': '类型',
   'learning.card.colState': '状态',
