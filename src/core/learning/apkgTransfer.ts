@@ -402,7 +402,7 @@ export async function exportApkg(entries: ReviewEntry[], SQL: SqlJsStatic): Prom
 
     db.run(
       'INSERT INTO notes VALUES (?, ?, ?, ?, -1, ?, ?, ?, ?, 0, "")',
-      [nid, genGuid(), mid, nowSec, tags, flds, firstField, fieldChecksum(firstField)],
+      [nid, genGuid(), mid, nowSec, tags, flds, stripHtml(firstField), fieldChecksum(firstField)],
     );
 
     // Map our scheduling state to Anki card fields
