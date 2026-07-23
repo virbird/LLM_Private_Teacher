@@ -489,7 +489,7 @@ export class LearningCommandDispatcher {
         if (!id || (field !== 'q' && field !== 'a') || !value) {
           return t('learning.card.editUsage');
         }
-        return this.cardManager.editCard(id, field as 'q' | 'a', value);
+        return this.cardManager.editCard(id, field, value);
       }
 
       case 'delete': {
@@ -675,7 +675,7 @@ export class LearningCommandDispatcher {
     let cssSaved = false;
     if (modelCss) {
       try {
-        await this.storage.writeVaultFile('.obsidian/snippets/anki-flashcards.css', modelCss);
+        await this.storage.writeVaultFile(`${this.storage.configDir}/snippets/anki-flashcards.css`, modelCss);
         cssSaved = true;
       } catch { /* snippets dir might not exist; ignore */ }
     }
@@ -754,7 +754,7 @@ export class LearningCommandDispatcher {
     const date = LearningStorage.today();
     // Derive a safe name from the source filename
     const baseName = sourcePath
-      .replace(/^.*[\/]/, '')           // strip directory
+      .replace(/^.*[/\\]/, '')           // strip directory
       .replace(/\.[^.]+$/, '')           // strip extension
       .replace(/[^a-zA-Z0-9\u4e00-\u9fff_-]/g, '_')
       .slice(0, 40);

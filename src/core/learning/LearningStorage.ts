@@ -3,17 +3,20 @@
  * - Plugin metadata: .claudian-api/learning/ (hidden, via vault.adapter)
  * - User-visible content: learning/ folders (via vault.create/modify)
  */
-import { type App, type Vault, type DataAdapter, TFile } from 'obsidian';
+import { type App, type Vault, type DataAdapter, TFile, Platform } from 'obsidian';
 
 export class LearningStorage {
   private adapter: DataAdapter;
   private vault: Vault;
   private hiddenRoot: string;
+  /** Obsidian config directory (not necessarily '.obsidian') */
+  readonly configDir: string;
 
   constructor(app: App) {
     this.vault = app.vault;
     this.adapter = app.vault.adapter;
     this.hiddenRoot = '.claudian-api/learning';
+    this.configDir = app.vault.configDir;
   }
 
   // --- Hidden metadata operations ---
@@ -103,8 +106,9 @@ export class LearningStorage {
 
   /** Read text file from filesystem via Node.js fs (Desktop only) */
   private async readTextFromFs(path: string): Promise<string | null> {
+    if (!Platform.isDesktopApp) return null;
     try {
-      // eslint-disable-next-line @typescript-eslint/no-require-imports -- dynamic require for Node.js fs, external in esbuild
+      // eslint-disable-next-line @typescript-eslint/no-require-imports -- Node.js fs, Desktop only, external in esbuild
       const fs = require('fs') as typeof import('fs');
       return fs.readFileSync(path, 'utf-8');
     } catch {
@@ -114,11 +118,12 @@ export class LearningStorage {
 
   /** Read binary file from filesystem via Node.js fs (Desktop only) */
   private async readBinaryFromFs(path: string): Promise<ArrayBuffer | null> {
+    if (!Platform.isDesktopApp) return null;
     try {
-      // eslint-disable-next-line @typescript-eslint/no-require-imports -- dynamic require for Node.js fs, external in esbuild
+      // eslint-disable-next-line @typescript-eslint/no-require-imports -- Node.js fs, Desktop only, external in esbuild
       const fs = require('fs') as typeof import('fs');
       const buf = fs.readFileSync(path);
-      return buf.buffer.slice(buf.byteOffset, buf.byteOffset + buf.byteLength) as ArrayBuffer;
+      return buf.buffer.slice(buf.byteOffset, buf.byteOffset + buf.byteLength);
     } catch {
       return null;
     }
