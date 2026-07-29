@@ -207,8 +207,8 @@ export const en = {
   'role.socratic.desc': 'Guides with questions instead of giving direct answers',
   'role.language.name': 'Language Partner (Humanities)',
   'role.language.desc': 'Bilingual companion for reading, vocabulary, and grammar',
-  'role.ielts.name': 'IELTS Writing 6.5 Coach',
-  'role.ielts.desc': '4-dimension matrix + progressive 5.5→6→6.5 upgrade + rewrite task loop',
+  'role.ielts.name': 'IELTS Writing High-Score Coach',
+  'role.ielts.desc': '4-dimension scoring + paragraph-level feedback + full revision + high-score expressions + loss-point summary',
 
   // --- Learning methods ---
   'method.guide.name': 'Study Guide',

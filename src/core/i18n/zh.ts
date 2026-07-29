@@ -207,8 +207,8 @@ export const zh = {
   'role.socratic.desc': '不直接给答案，用提问引导推导',
   'role.language.name': '语言学习伙伴(文科)',
   'role.language.desc': '词汇、语法、翻译、文化背景双语学习',
-  'role.ielts.name': '雅思写作6.5分冲刺教练',
-  'role.ielts.desc': '四维精批矩阵 + 5.5→6→6.5渐进式升级 + 重写任务卡闭环',
+  'role.ielts.name': '雅思写作高分冲刺教练',
+  'role.ielts.desc': '四维评分 + 逐段精批 + 全文修订版 + 高分表达积累 + 失分点总结',
 
   // --- Learning methods ---
   'method.guide.name': '即时学习指南',
