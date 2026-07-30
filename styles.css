@@ -1093,6 +1093,12 @@
   cursor: not-allowed;
 }
 
+/* Clickable notice (e.g. "saved to ..." — opens the note) */
+.claudian-notice-clickable {
+  cursor: pointer;
+  text-decoration: underline;
+}
+
 /* === Floating save bar (only visible while messages are selected) === */
 .claudian-save-bar {
   display: flex;

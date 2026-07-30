@@ -1,4 +1,4 @@
-import { ItemView, Component, SuggestModal, Modal, Notice, MarkdownRenderer, TFile, TFolder, setIcon, type App, type WorkspaceLeaf } from 'obsidian';
+import { ItemView, Component, SuggestModal, Modal, Notice, MarkdownRenderer, TFile, setIcon, type App, type WorkspaceLeaf } from 'obsidian';
 import type ClaudianPlugin from '../../main';
 import { ChatState } from './state/ChatState';
 import { MessageRenderer } from './rendering/MessageRenderer';
@@ -12,6 +12,7 @@ import { MethodRegistry } from '../../core/learning/MethodRegistry';
 import type { ApiMessage, Conversation, UsageInfo, ContentPart } from '../../core/types/chat';
 import { isImagePath, resolveImageParts, type ImageReadAdapter } from '../../utils/imageResolver';
 import type { LearningMaterial } from '../../core/types/settings';
+import { DEFAULT_SETTINGS } from '../../core/types/settings';
 import type { ProviderId } from '../../core/types/provider';
 import type { ConversationMeta } from '../../core/storage/SessionStorage';
 import { ReadFileTool } from '../../core/tools/tools/ReadFileTool';
@@ -1458,9 +1459,23 @@ export class ChatView extends ItemView {
   }
 
   private async saveSelectedNotes(): Promise<void> {
+    try {
+      await this.writeSelectedNotes();
+    } catch (e: unknown) {
+      // Without this the failure was completely silent (fire-and-forget caller)
+      const reason = e instanceof Error ? e.message : String(e);
+      new Notice(t('note.saveFailed', { error: reason }), 8000);
+      this.statusEl.textContent = t('note.saveFailed', { error: reason });
+    }
+  }
+
+  private async writeSelectedNotes(): Promise<void> {
     const messages = this.chatState.messages;
     const selectedIds = this.chatState.selectedMessageIds;
-    if (selectedIds.size === 0) return;
+    if (selectedIds.size === 0) {
+      new Notice(t('note.nothingToSave'), 4000);
+      return;
+    }
 
     // Collect Q&A pairs: each selected assistant message + its preceding user message
     const qaPairs: Array<{ question: string; answer: string }> = [];
@@ -1479,7 +1494,10 @@ export class ChatView extends ItemView {
       }
     }
 
-    if (qaPairs.length === 0) return;
+    if (qaPairs.length === 0) {
+      new Notice(t('note.nothingToSave'), 4000);
+      return;
+    }
 
     // Build Markdown with YAML frontmatter
     const now = new Date();
@@ -1502,28 +1520,45 @@ export class ChatView extends ItemView {
       if (idx < qaPairs.length - 1) md += '---\n\n';
     });
 
-    // Ensure folder exists
-    const folderPath = this.plugin.settings.learning.noteFolder;
-    const folder = this.app.vault.getAbstractFileByPath(folderPath);
-    if (!folder) {
-      await this.app.vault.createFolder(folderPath);
-    } else if (!(folder instanceof TFolder)) {
-      // Path exists but is a file, not a folder — use root
-      new Notice('Error: note folder path is a file, not a folder');
-      return;
+    // Ensure the folder exists via the adapter (creating parents as needed) rather than
+    // vault.createFolder(), which throws when the vault index and disk disagree about a path.
+    const folderPath = this.plugin.settings.learning.noteFolder || DEFAULT_SETTINGS.learning.noteFolder;
+    const adapter = this.app.vault.adapter;
+    const parts = folderPath.split('/').filter(Boolean);
+    let current = '';
+    for (const part of parts) {
+      current = current ? `${current}/${part}` : part;
+      if (!(await adapter.exists(current))) {
+        await adapter.mkdir(current);
+      }
     }
 
     const filePath = `${folderPath}/qa-note-${fileDateStr}.md`;
     // Avoid overwriting: append suffix if file already exists
     let finalPath = filePath;
     let counter = 1;
-    while (this.app.vault.getAbstractFileByPath(finalPath)) {
+    while (await adapter.exists(finalPath)) {
       finalPath = `${folderPath}/qa-note-${fileDateStr}-${counter}.md`;
       counter++;
     }
 
-    await this.app.vault.create(finalPath, md);
-    new Notice(t('note.saved', { path: finalPath }), 4000);
+    try {
+      await this.app.vault.create(finalPath, md);
+    } catch {
+      // Fall back to a raw write when the vault index disagrees about the path
+      await adapter.write(finalPath, md);
+    }
+
+    // Persistent hint in the status line + a clickable notice to open the note
+    this.statusEl.textContent = t('note.saved', { path: finalPath });
+    const notice = new Notice(
+      t('note.saved', { path: finalPath }) + ' ' + t('note.clickToOpen'),
+      8000,
+    );
+    notice.noticeEl.addClass('claudian-notice-clickable');
+    notice.noticeEl.addEventListener('click', () => {
+      void this.app.workspace.openLinkText(finalPath, '', true);
+    });
 
     // Clear selection and hide bar
     this.chatState.clearSelection();

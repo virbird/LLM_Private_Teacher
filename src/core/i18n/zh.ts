@@ -34,6 +34,9 @@ export const zh = {
   // --- Save to note ---
   'note.saveSelected': '保存所选',
   'note.saved': '已保存到 {path}',
+  'note.clickToOpen': '（点击打开）',
+  'note.saveFailed': '⚠️ 保存失败：{error}',
+  'note.nothingToSave': '没有可保存的内容 — 请先勾选 AI 回复右上角的复选框。',
   'note.selectedCount': '已选 {count} 条',
   'note.clear': '清除',
   'note.question': '问题',

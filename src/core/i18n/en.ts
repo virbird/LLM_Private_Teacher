@@ -34,6 +34,9 @@ export const en = {
   // --- Save to note ---
   'note.saveSelected': 'Save selected',
   'note.saved': 'Saved to {path}',
+  'note.clickToOpen': '(click to open)',
+  'note.saveFailed': '⚠️ Save failed: {error}',
+  'note.nothingToSave': 'Nothing to save — tick the checkbox on an AI reply first.',
   'note.selectedCount': '{count} selected',
   'note.clear': 'Clear',
   'note.question': 'Question',

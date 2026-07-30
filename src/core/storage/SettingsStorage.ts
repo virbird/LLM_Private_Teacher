@@ -8,7 +8,14 @@ export class SettingsStorage {
   async load(): Promise<PluginSettings> {
     const saved = await this.storage.readJson<Partial<PluginSettings>>('settings.json');
     if (!saved) return { ...DEFAULT_SETTINGS };
-    const merged = { ...DEFAULT_SETTINGS, ...saved, providers: { ...DEFAULT_SETTINGS.providers, ...(saved.providers ?? {}) } };
+    const merged = {
+      ...DEFAULT_SETTINGS,
+      ...saved,
+      providers: { ...DEFAULT_SETTINGS.providers, ...(saved.providers ?? {}) },
+      // Deep-merge so fields added in later versions (noteFolder, learningSteps, ...)
+      // get their defaults instead of being dropped by the spread above.
+      learning: { ...DEFAULT_SETTINGS.learning, ...(saved.learning ?? {}) },
+    };
     // Deep-merge each provider to ensure new fields (like customModels) have defaults
     const providers = merged.providers as unknown as Record<string, Record<string, unknown>>;
     for (const key of Object.keys(DEFAULT_SETTINGS.providers) as Array<keyof typeof DEFAULT_SETTINGS.providers>) {
@@ -21,6 +28,9 @@ export class SettingsStorage {
     }
     if (typeof merged.activeMaterialPath !== 'string') {
       merged.activeMaterialPath = '';
+    }
+    if (!Array.isArray(merged.learning.learningSteps) || merged.learning.learningSteps.length === 0) {
+      merged.learning.learningSteps = [...DEFAULT_SETTINGS.learning.learningSteps];
     }
     return merged;
   }
