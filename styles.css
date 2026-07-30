@@ -4,6 +4,12 @@
   display: none;
 }
 
+/* Component rules such as `.claudian-save-bar { display: flex }` appear later in this
+   file and would win on equal specificity, so scope the hide rule to always take effect. */
+.claudian-container .is-hidden {
+  display: none;
+}
+
 .claudian-container {
   display: flex;
   flex-direction: column;
@@ -195,11 +201,16 @@
   position: relative;
 }
 
+/* Wraps the textarea so send/stop can dock inside its bottom-right corner */
+.claudian-input-wrap {
+  position: relative;
+}
+
 .claudian-input {
   width: 100%;
-  min-height: 36px;
+  min-height: 76px;
   max-height: 200px;
-  padding: 8px 12px;
+  padding: 8px 12px 34px;
   border: 1px solid var(--background-modifier-border);
   border-radius: 8px;
   background: var(--background-secondary);
@@ -221,18 +232,35 @@
   opacity: 0.6;
 }
 
-/* Toolbar */
+/* Send / stop docked inside the input box */
+.claudian-input-actions {
+  position: absolute;
+  right: 6px;
+  bottom: 6px;
+}
+
+.claudian-input-actions .claudian-btn {
+  padding: 3px 12px;
+  font-size: 12px;
+}
+
+/* Meta row below the input: status text + context usage */
 .claudian-toolbar {
   display: flex;
   align-items: center;
   gap: 8px;
-  margin-top: 6px;
+  margin-top: 4px;
+  min-height: 16px;
 }
 
 .claudian-status {
+  flex: 1;
+  min-width: 0;
   font-size: 11px;
   color: var(--text-muted);
-  flex: 1;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 /* Context usage indicator */
@@ -257,7 +285,7 @@
 }
 
 .claudian-context-bar {
-  width: 60px;
+  width: 44px;
   height: 6px;
   border-radius: 3px;
   background: var(--background-modifier-border);
@@ -1065,12 +1093,12 @@
   cursor: not-allowed;
 }
 
-/* === Floating save bar === */
+/* === Floating save bar (only visible while messages are selected) === */
 .claudian-save-bar {
   display: flex;
   align-items: center;
-  gap: 8px;
-  padding: 6px 12px;
+  gap: 6px;
+  padding: 4px 12px;
   background: var(--background-secondary);
   border-top: 1px solid var(--background-modifier-border);
   box-shadow: 0 -2px 6px rgba(0, 0, 0, 0.08);
@@ -1079,12 +1107,13 @@
 
 .claudian-save-bar-count {
   flex: 1;
-  font-size: 12px;
+  min-width: 0;
+  font-size: 11px;
   color: var(--text-muted);
 }
 
 .claudian-save-bar-btn {
-  padding: 3px 10px;
+  padding: 2px 10px;
   font-size: 12px;
 }
 

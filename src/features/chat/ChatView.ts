@@ -202,7 +202,10 @@ export class ChatView extends ItemView {
     // Autocomplete popup
     this.autocompleteEl = inputArea.createDiv({ cls: 'claudian-autocomplete is-hidden' });
 
-    this.inputEl = inputArea.createEl('textarea', { cls: 'claudian-input' });
+    // Input row: textarea with send/stop docked inside its bottom-right corner
+    const inputWrap = inputArea.createDiv({ cls: 'claudian-input-wrap' });
+
+    this.inputEl = inputWrap.createEl('textarea', { cls: 'claudian-input' });
     this.inputEl.placeholder = t('input.placeholder');
     this.inputEl.rows = 1;
 
@@ -237,7 +240,18 @@ export class ChatView extends ItemView {
       }
     });
 
-    // Toolbar
+    const btnGroup = inputWrap.createDiv({ cls: 'claudian-btn-group claudian-input-actions' });
+
+    this.stopBtn = btnGroup.createEl('button', { cls: 'claudian-btn claudian-btn-stop is-hidden', text: t('stop') });
+    this.stopBtn.addEventListener('click', () => {
+      this.abortController?.abort();
+      this.abortController = null;
+    });
+
+    this.sendBtn = btnGroup.createEl('button', { cls: 'claudian-btn claudian-btn-send', text: t('send') });
+    this.sendBtn.addEventListener('click', () => { void this.sendMessage(); });
+
+    // Meta row: status text + context usage indicator
     const toolbar = inputArea.createDiv({ cls: 'claudian-toolbar' });
     this.statusEl = toolbar.createSpan({ cls: 'claudian-status' });
 
@@ -263,17 +277,6 @@ export class ChatView extends ItemView {
       text: t('context.close'),
     });
     closeBtn.addEventListener('click', () => this.toggleContextPopup(false));
-
-    const btnGroup = toolbar.createDiv({ cls: 'claudian-btn-group' });
-
-    this.stopBtn = btnGroup.createEl('button', { cls: 'claudian-btn claudian-btn-stop is-hidden', text: t('stop') });
-    this.stopBtn.addEventListener('click', () => {
-      this.abortController?.abort();
-      this.abortController = null;
-    });
-
-    this.sendBtn = btnGroup.createEl('button', { cls: 'claudian-btn claudian-btn-send', text: t('send') });
-    this.sendBtn.addEventListener('click', () => { void this.sendMessage(); });
 
     // Loading indicator
     this.loadingEl = this.messagesEl.createDiv({ cls: 'claudian-loading is-hidden' });
