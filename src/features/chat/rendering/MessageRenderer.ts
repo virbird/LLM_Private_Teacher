@@ -30,9 +30,10 @@ export class MessageRenderer {
 
     // Checkbox for assistant messages only
     if (msg.role === 'assistant') {
-      const cb = msgEl.ownerDocument.createElement('input');
-      cb.type = 'checkbox';
-      cb.className = 'claudian-checkbox';
+      const cb = headerEl.createEl('input', {
+        type: 'checkbox',
+        cls: 'claudian-checkbox',
+      });
       cb.checked = opts.selectedIds.has(msg.id);
       // Disable checkbox while this message is still streaming
       if (opts.streamingMsgId === msg.id) {
@@ -42,7 +43,6 @@ export class MessageRenderer {
         e.stopPropagation();
         opts.onToggle?.(msg.id);
       };
-      headerEl.appendChild(cb);
     }
 
     const contentEl = msgEl.createDiv({ cls: 'claudian-message-content' });

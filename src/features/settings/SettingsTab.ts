@@ -295,7 +295,6 @@ export class ClaudianSettingsTab extends PluginSettingTab {
       if (!compat.customModels) compat.customModels = [];
 
       const allModels = [compat.model, ...compat.customModels].filter(Boolean);
-      console.log('[AI Study Buddy] Add model:', modelName, 'existing:', allModels);
 
       if (allModels.includes(modelName)) {
         new Notice(t('settings.models.exists', { name: modelName }), 3000);
@@ -310,7 +309,6 @@ export class ClaudianSettingsTab extends PluginSettingTab {
       await this.plugin.saveSettings();
       inputEl.value = '';
       new Notice(t('settings.models.added', { name: modelName }), 3000);
-      console.log('[AI Study Buddy] Model added. default:', compat.model, 'custom:', compat.customModels);
       this.renderModelList(listEl);
     };
 
@@ -330,7 +328,6 @@ export class ClaudianSettingsTab extends PluginSettingTab {
     const compat = this.plugin.settings.providers.openaiCompat;
     if (!compat.customModels) compat.customModels = [];
     const defaultModel = compat.model;
-    console.log('[AI Study Buddy] renderModelList: default=', defaultModel, 'custom=', compat.customModels);
 
     // Build model list: default + custom (deduplicated)
     const allModels: Array<{ id: string; isDefault: boolean }> = [];

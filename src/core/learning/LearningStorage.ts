@@ -108,8 +108,7 @@ export class LearningStorage {
   private async readTextFromFs(path: string): Promise<string | null> {
     if (!Platform.isDesktopApp) return null;
     try {
-      // eslint-disable-next-line @typescript-eslint/no-require-imports -- Node.js fs, Desktop only, external in esbuild
-      const fs = require('fs') as typeof import('fs');
+      const fs = await import('fs');
       return fs.readFileSync(path, 'utf-8');
     } catch {
       return null;
@@ -120,8 +119,7 @@ export class LearningStorage {
   private async readBinaryFromFs(path: string): Promise<ArrayBuffer | null> {
     if (!Platform.isDesktopApp) return null;
     try {
-      // eslint-disable-next-line @typescript-eslint/no-require-imports -- Node.js fs, Desktop only, external in esbuild
-      const fs = require('fs') as typeof import('fs');
+      const fs = await import('fs');
       const buf = fs.readFileSync(path);
       return buf.buffer.slice(buf.byteOffset, buf.byteOffset + buf.byteLength);
     } catch {
