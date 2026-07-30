@@ -38,6 +38,8 @@ export const zh = {
   'note.saveFailed': '⚠️ 保存失败：{error}',
   'note.nothingToSave': '没有可保存的内容 — 请先勾选 AI 回复右上角的复选框。',
   'note.selectedCount': '已选 {count} 条',
+  'note.selectedOf': '已选 {count} / 共 {total} 条',
+  'note.selectAll': '全选',
   'note.clear': '清除',
   'note.question': '问题',
   'note.answer': '回答',
@@ -159,7 +161,9 @@ export const zh = {
   'help.misc.heading': '7. 常用操作',
   'help.misc.1': '<code>/new</code>：新建对话，<code>/clear</code>：清空当前对话',
   'help.misc.2': '<code>/history</code>：查看历史对话',
-  'help.misc.3': 'Provider / Model 下拉框可快速切换模型。',
+  'help.misc.3': '点右上角状态芯片可快速切换提供商 / 模型 / 材料 / 角色。',
+  'help.misc.4': '<strong>存为笔记</strong>：勾选 AI 回复右上角的复选框，底部会出现 <strong>全选 / 保存所选 / 清除</strong>；多轮对话点【全选】一次存全部。也可在命令面板搜索 “Select all AI replies” 直接全选。',
+  'help.misc.5': '笔记保存到 <code>学习笔记/</code> 目录，保存后提示可直接点击打开。',
   'help.footer': '提示：学习命令会携带当前选中的材料和角色设定一起发送给 AI。闪卡按学科/主题分类，复习时可按学科筛选。',
 
   // --- SettingsTab ---

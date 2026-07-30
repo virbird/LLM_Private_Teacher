@@ -123,6 +123,7 @@ export class ChatView extends ItemView {
   private sendBtn!: HTMLButtonElement;
   private idleTimer: number | null = null;
   private saveBarEl!: HTMLElement;
+  private selectAllBtn!: HTMLButtonElement;
   private streamingMsgId = '';
   private rafPending = false;
   private contextIndicatorEl!: HTMLElement;
@@ -150,15 +151,7 @@ export class ChatView extends ItemView {
     this.stopBtn.setText(t('stop'));
     this.sendBtn.setText(t('send'));
     this.compressNowBtn.setText(t('context.compressNow'));
-    // Refresh save bar labels
-    this.saveBarEl.empty();
-    const countEl = this.saveBarEl.createSpan({ cls: 'claudian-save-bar-count' });
-    countEl.textContent = t('note.selectedCount', { count: String(this.chatState.getSelectedCount()) });
-    const saveBtn = this.saveBarEl.createEl('button', { cls: 'claudian-btn claudian-btn-send claudian-save-bar-btn', text: t('note.saveSelected') });
-    saveBtn.addEventListener('click', () => { void this.saveSelectedNotes(); });
-    const clearBtn = this.saveBarEl.createEl('button', { cls: 'claudian-btn claudian-save-bar-btn', text: t('note.clear') });
-    clearBtn.addEventListener('click', () => { this.chatState.clearSelection(); });
-    this.updateSaveBar();
+    this.buildSaveBar();
   }
 
   async onOpen(): Promise<void> {
@@ -188,14 +181,8 @@ export class ChatView extends ItemView {
     // Messages area
     this.messagesEl = container.createDiv({ cls: 'claudian-messages' });
 
-    // Floating save bar (shown when >= 1 message is selected)
+    // Floating save bar (shown when >= 1 message is selected) — filled once chatState exists
     this.saveBarEl = container.createDiv({ cls: 'claudian-save-bar is-hidden' });
-    const saveBarCountEl = this.saveBarEl.createSpan({ cls: 'claudian-save-bar-count' });
-    saveBarCountEl.textContent = t('note.selectedCount', { count: '0' });
-    const saveBtn = this.saveBarEl.createEl('button', { cls: 'claudian-btn claudian-btn-send claudian-save-bar-btn', text: t('note.saveSelected') });
-    saveBtn.addEventListener('click', () => { void this.saveSelectedNotes(); });
-    const clearBtn = this.saveBarEl.createEl('button', { cls: 'claudian-btn claudian-save-bar-btn', text: t('note.clear') });
-    clearBtn.addEventListener('click', () => { this.chatState.clearSelection(); });
 
     // Input area
     const inputArea = container.createDiv({ cls: 'claudian-input-area' });
@@ -308,8 +295,43 @@ export class ChatView extends ItemView {
 
     // Wire up selection-changed callback to update floating save bar
     this.chatState.setOnSelectionChanged(() => this.updateSaveBar());
+    this.buildSaveBar();
 
     this.applyWidthClass();
+  }
+
+  private buildSaveBar(): void {
+    this.saveBarEl.empty();
+    this.saveBarEl.createSpan({ cls: 'claudian-save-bar-count' });
+
+    this.selectAllBtn = this.saveBarEl.createEl('button', {
+      cls: 'claudian-btn claudian-save-bar-btn',
+      text: t('note.selectAll'),
+    });
+    this.selectAllBtn.addEventListener('click', () => { this.chatState.selectAll(); });
+
+    const saveBtn = this.saveBarEl.createEl('button', {
+      cls: 'claudian-btn claudian-btn-send claudian-save-bar-btn',
+      text: t('note.saveSelected'),
+    });
+    saveBtn.addEventListener('click', () => { void this.saveSelectedNotes(); });
+
+    const clearBtn = this.saveBarEl.createEl('button', {
+      cls: 'claudian-btn claudian-save-bar-btn',
+      text: t('note.clear'),
+    });
+    clearBtn.addEventListener('click', () => { this.chatState.clearSelection(); });
+
+    this.updateSaveBar();
+  }
+
+  /** Select every AI reply in the conversation (also reachable from the command palette) */
+  selectAllReplies(): void {
+    if (this.chatState.getSelectableIds().length === 0) {
+      new Notice(t('note.nothingToSave'), 4000);
+      return;
+    }
+    this.chatState.selectAll();
   }
 
   private buildHeader(): void {
@@ -799,6 +821,8 @@ export class ChatView extends ItemView {
       t('help.misc.1'),
       t('help.misc.2'),
       t('help.misc.3'),
+      t('help.misc.4'),
+      t('help.misc.5'),
     ]);
 
     const footer = content.createDiv({ cls: 'claudian-help-footer' });
@@ -953,8 +977,10 @@ export class ChatView extends ItemView {
     const count = this.chatState.getSelectedCount();
     if (count > 0) {
       this.saveBarEl.removeClass('is-hidden');
+      const total = this.chatState.getSelectableIds().length;
       const countEl = this.saveBarEl.querySelector('.claudian-save-bar-count');
-      if (countEl) countEl.textContent = t('note.selectedCount', { count: String(count) });
+      if (countEl) countEl.textContent = t('note.selectedOf', { count: String(count), total: String(total) });
+      this.selectAllBtn.disabled = count >= total;
     } else {
       this.saveBarEl.addClass('is-hidden');
     }

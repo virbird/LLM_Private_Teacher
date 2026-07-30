@@ -38,6 +38,8 @@ export const en = {
   'note.saveFailed': '⚠️ Save failed: {error}',
   'note.nothingToSave': 'Nothing to save — tick the checkbox on an AI reply first.',
   'note.selectedCount': '{count} selected',
+  'note.selectedOf': '{count} of {total} selected',
+  'note.selectAll': 'Select all',
   'note.clear': 'Clear',
   'note.question': 'Question',
   'note.answer': 'Answer',
@@ -159,7 +161,9 @@ export const en = {
   'help.misc.heading': '7. Common Actions',
   'help.misc.1': '<code>/new</code>: new conversation, <code>/clear</code>: clear current conversation',
   'help.misc.2': '<code>/history</code>: view conversation history',
-  'help.misc.3': 'Use Provider / Model dropdowns to switch models quickly.',
+  'help.misc.3': 'Click the status chip in the top-right corner to switch provider / model / material / role.',
+  'help.misc.4': '<strong>Save as note</strong>: tick the checkbox on an AI reply and the bottom bar shows <strong>Select all / Save selected / Clear</strong>. With many rounds, hit <strong>Select all</strong> to save them in one go, or run “Select all AI replies” from the command palette.',
+  'help.misc.5': 'Notes are written to the <code>学习笔记/</code> folder; the confirmation notice is clickable to open the note.',
   'help.footer': 'Tip: Learning commands include the selected material and role when sending to AI. Flashcards are organized by subject/topic, and review can be filtered by subject.',
 
   // --- SettingsTab ---

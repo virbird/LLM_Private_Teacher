@@ -63,6 +63,12 @@ export default class ClaudianPlugin extends Plugin {
       callback: () => { void this.activateView('main'); },
     });
 
+    this.addCommand({
+      id: 'select-all-replies',
+      name: 'Select all AI replies in chat',
+      callback: () => { void this.selectAllRepliesInChat(); },
+    });
+
     // --- Quote to conversation ---
     this.addCommand({
       id: 'quote-selection',
@@ -271,6 +277,16 @@ export default class ClaudianPlugin extends Plugin {
       ? selection.substring(0, 2000) + '\n...(truncated)'
       : selection;
     return `> 📄 **${filePath}**\n> ${truncated.split('\n').join('\n> ')}\n\n`;
+  }
+
+  /** Select every AI reply in the chat view so they can be saved in one go */
+  private async selectAllRepliesInChat(): Promise<void> {
+    await this.activateView();
+    const leaves = this.app.workspace.getLeavesOfType(VIEW_TYPE_CLAUDIAN);
+    if (leaves.length > 0) {
+      const view = leaves[0].view as ChatView;
+      view.selectAllReplies();
+    }
   }
 
   /** Insert quoted text into the chat input (doesn't auto-send, lets user add their question) */

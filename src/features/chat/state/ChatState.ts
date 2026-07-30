@@ -50,6 +50,22 @@ export class ChatState {
     this.callbacks.onMessagesChanged();
   }
 
+  /** Ids of assistant messages that can be saved to a note */
+  getSelectableIds(): string[] {
+    return this.messages
+      .filter(m => m.role === 'assistant' && m.content)
+      .map(m => m.id);
+  }
+
+  /** Select every saveable assistant message */
+  selectAll(): void {
+    for (const id of this.getSelectableIds()) {
+      this.selectedMessageIds.add(id);
+    }
+    this.onSelectionChanged?.();
+    this.callbacks.onMessagesChanged();
+  }
+
   getSelectedCount(): number {
     return this.selectedMessageIds.size;
   }
