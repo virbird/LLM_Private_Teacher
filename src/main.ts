@@ -57,6 +57,12 @@ export default class ClaudianPlugin extends Plugin {
       callback: () => { void this.activateView(); },
     });
 
+    this.addCommand({
+      id: 'open-chat-view-main',
+      name: 'Open chat view in main pane',
+      callback: () => { void this.activateView('main'); },
+    });
+
     // --- Quote to conversation ---
     this.addCommand({
       id: 'quote-selection',
@@ -237,8 +243,17 @@ export default class ClaudianPlugin extends Plugin {
     await this.settingsStorage.save(this.settings);
   }
 
-  async activateView(): Promise<void> {
+  async activateView(placement: 'sidebar' | 'main' = 'sidebar'): Promise<void> {
     const { workspace } = this.app;
+
+    if (placement === 'main') {
+      // Always open a fresh tab in the main area (wide layout for long outputs)
+      const tabLeaf = workspace.getLeaf('tab');
+      await tabLeaf.setViewState({ type: VIEW_TYPE_CLAUDIAN, active: true });
+      await workspace.revealLeaf(tabLeaf);
+      return;
+    }
+
     let leaf = workspace.getLeavesOfType(VIEW_TYPE_CLAUDIAN)[0];
     if (!leaf) {
       const rightLeaf = workspace.getRightLeaf(false);

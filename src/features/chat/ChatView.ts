@@ -1,4 +1,4 @@
-import { ItemView, Component, SuggestModal, Modal, Notice, MarkdownRenderer, TFile, TFolder, type App, type WorkspaceLeaf } from 'obsidian';
+import { ItemView, Component, SuggestModal, Modal, Notice, MarkdownRenderer, TFile, TFolder, setIcon, type App, type WorkspaceLeaf } from 'obsidian';
 import type ClaudianPlugin from '../../main';
 import { ChatState } from './state/ChatState';
 import { MessageRenderer } from './rendering/MessageRenderer';
@@ -111,6 +111,9 @@ export class ChatView extends ItemView {
   private abortController: AbortController | null = null;
   private activeRole: RolePreset | null = ROLE_PRESETS[0] ?? null;
   private roleBarEl!: HTMLElement;
+  private settingsPanelEl!: HTMLElement;
+  private chipEl!: HTMLButtonElement;
+  private rootEl!: HTMLElement;
   private component!: Component;
   private conversationMetas: ConversationMeta[] = [];
   private helpEl!: HTMLElement;
@@ -140,7 +143,7 @@ export class ChatView extends ItemView {
   /** Re-render all UI elements after locale change */
   refreshUI(): void {
     this.buildHeader();
-    this.buildRoleBar();
+    this.buildSettingsPanel();
     this.buildHelpPanel();
     this.inputEl.placeholder = t('input.placeholder');
     this.stopBtn.setText(t('stop'));
@@ -161,17 +164,18 @@ export class ChatView extends ItemView {
     const container = this.containerEl.children[1] as HTMLElement;
     container.empty();
     container.addClass('claudian-container');
+    this.rootEl = container;
 
     // Initialize component early — needed by MarkdownRenderer in buildHelpPanel
     this.component = new Component();
 
-    // Header with provider/model switching + history
+    // Compact header: icon actions + status chip that opens the quick settings panel
     this.headerEl = container.createDiv({ cls: 'claudian-header' });
     this.buildHeader();
 
-    // Role selector bar
-    this.roleBarEl = container.createDiv({ cls: 'claudian-role-bar' });
-    this.buildRoleBar();
+    // Quick settings panel (provider / model / material / role) — hidden by default
+    this.settingsPanelEl = container.createDiv({ cls: 'claudian-settings-panel is-hidden' });
+    this.buildSettingsPanel();
 
     // Conversation history panel (hidden by default)
     this.historyEl = container.createDiv({ cls: 'claudian-history is-hidden' });
@@ -300,59 +304,125 @@ export class ChatView extends ItemView {
 
     // Wire up selection-changed callback to update floating save bar
     this.chatState.setOnSelectionChanged(() => this.updateSaveBar());
+
+    this.applyWidthClass();
   }
 
   private buildHeader(): void {
     this.headerEl.empty();
 
-    const row1 = this.headerEl.createDiv({ cls: 'claudian-header-row' });
+    const row = this.headerEl.createDiv({ cls: 'claudian-header-row' });
 
-    // New chat button
-    const newBtn = row1.createEl('button', { cls: 'claudian-btn claudian-header-btn', text: t('new') });
-    newBtn.title = t('new.title');
-    newBtn.addEventListener('click', () => this.startNewConversation());
+    const iconBtn = (icon: string, label: string, onClick: () => void): void => {
+      const btn = row.createEl('button', { cls: 'claudian-btn claudian-icon-btn' });
+      setIcon(btn, icon);
+      btn.setAttribute('aria-label', label);
+      btn.title = label;
+      btn.addEventListener('click', onClick);
+    };
 
-    // History toggle
-    const historyBtn = row1.createEl('button', { cls: 'claudian-btn claudian-header-btn', text: t('history') });
-    historyBtn.addEventListener('click', () => { void this.toggleHistory(); });
+    iconBtn('plus', t('new.title'), () => this.startNewConversation());
+    iconBtn('history', t('history.title'), () => { void this.toggleHistory(); });
+    iconBtn('help-circle', t('help.title'), () => this.toggleHelp());
 
-    // Help toggle
-    const helpBtn = row1.createEl('button', { cls: 'claudian-btn claudian-header-btn', text: t('help') });
-    helpBtn.addEventListener('click', () => this.toggleHelp());
+    row.createDiv({ cls: 'claudian-header-spacer' });
 
-    row1.createDiv({ cls: 'claudian-header-spacer' });
+    // Status chip — shows model / role / material and opens the quick settings panel
+    this.chipEl = row.createEl('button', { cls: 'claudian-btn claudian-chip' });
+    this.chipEl.addEventListener('click', () => this.toggleSettingsPanel());
+    this.updateHeaderChip();
+  }
+
+  /** Refresh the header chip summary (model · role · material) */
+  private updateHeaderChip(): void {
+    if (!this.chipEl) return;
+    this.chipEl.empty();
+    this.chipEl.title = t('quickSettings.tooltip');
+
+    const provider = ProviderRegistry.get(this.plugin.settings.activeProvider);
+    const modelId = this.getActiveModel();
+    const modelLabel = provider?.getModels().find(m => m.id === modelId)?.displayName ?? modelId;
+    this.chipEl.createSpan({ cls: 'claudian-chip-model', text: modelLabel || t('noProvider') });
+
+    this.chipEl.createSpan({ cls: 'claudian-chip-sep', text: '·' });
+    const roleEl = this.chipEl.createSpan({ cls: 'claudian-chip-role' });
+    roleEl.createSpan({ cls: 'claudian-chip-role-icon', text: this.activeRole?.icon ?? '○' });
+    roleEl.createSpan({
+      cls: 'claudian-chip-role-name',
+      text: this.activeRole ? t((this.activeRole.i18nKey + '.name') as I18nKey) : t('role.none'),
+    });
+
+    const materialPath = this.plugin.settings.activeMaterialPath;
+    if (materialPath) {
+      this.chipEl.createSpan({ cls: 'claudian-chip-sep', text: '·' });
+      this.chipEl.createSpan({
+        cls: 'claudian-chip-material',
+        text: materialPath.split('/').pop() ?? materialPath,
+      });
+    }
+
+    this.chipEl.createSpan({ cls: 'claudian-chip-caret', text: '▾' });
+  }
+
+  /** Show/hide the quick settings panel (closes history/help to avoid stacked panels) */
+  private toggleSettingsPanel(force?: boolean): void {
+    const shouldShow = force ?? this.settingsPanelEl.hasClass('is-hidden');
+    this.settingsPanelEl.toggleClass('is-hidden', !shouldShow);
+    this.chipEl.toggleClass('is-active', shouldShow);
+    if (shouldShow) {
+      this.historyEl.addClass('is-hidden');
+      this.helpEl.addClass('is-hidden');
+    }
+  }
+
+  private buildSettingsPanel(): void {
+    this.settingsPanelEl.empty();
+
+    const addRow = (labelText: string): HTMLElement => {
+      const row = this.settingsPanelEl.createDiv({ cls: 'claudian-settings-row' });
+      row.createSpan({ cls: 'claudian-settings-label', text: labelText });
+      return row.createDiv({ cls: 'claudian-settings-control' });
+    };
 
     // Provider dropdown
-    row1.createSpan({ cls: 'claudian-header-label', text: t('provider') });
-    this.providerSelect = row1.createEl('select', { cls: 'claudian-select claudian-provider-select' });
+    const providerCtl = addRow(t('provider'));
+    this.providerSelect = providerCtl.createEl('select', { cls: 'claudian-select claudian-provider-select' });
     this.populateProviderSelect();
     this.providerSelect.addEventListener('change', () => {
       const val = this.providerSelect.value as ProviderId;
       this.plugin.settings.activeProvider = val;
       void this.plugin.saveSettings();
       this.populateModelSelect();
+      this.updateHeaderChip();
     });
 
     // Model dropdown
-    this.modelSelect = row1.createEl('select', { cls: 'claudian-select claudian-model-select' });
+    const modelCtl = addRow(t('model'));
+    this.modelSelect = modelCtl.createEl('select', { cls: 'claudian-select claudian-model-select' });
     this.populateModelSelect();
     this.modelSelect.addEventListener('change', () => {
       this.updateActiveModel(this.modelSelect.value);
       void this.plugin.saveSettings();
+      this.updateHeaderChip();
     });
 
-    // Material dropdown
-    row1.createSpan({ cls: 'claudian-header-label', text: t('material') });
-    this.materialSelect = row1.createEl('select', { cls: 'claudian-select claudian-material-select' });
+    // Material dropdown + picker
+    const materialCtl = addRow(t('material'));
+    this.materialSelect = materialCtl.createEl('select', { cls: 'claudian-select claudian-material-select' });
     this.populateMaterialSelect();
     this.materialSelect.addEventListener('change', () => {
       this.plugin.settings.activeMaterialPath = this.materialSelect.value;
       void this.plugin.saveSettings();
+      this.updateHeaderChip();
     });
-
-    const addMaterialBtn = row1.createEl('button', { cls: 'claudian-btn claudian-header-btn claudian-material-add-btn', text: t('addMaterial') });
+    const addMaterialBtn = materialCtl.createEl('button', { cls: 'claudian-btn claudian-header-btn claudian-material-add-btn', text: t('addMaterial') });
     addMaterialBtn.title = t('addMaterial.title');
     addMaterialBtn.addEventListener('click', () => this.openMaterialPicker());
+
+    // Role chips (wrapping grid — scales as roles are added)
+    this.roleBarEl = addRow(t('role'));
+    this.roleBarEl.addClass('claudian-role-bar');
+    this.buildRoleBar();
   }
 
   private populateProviderSelect(): void {
@@ -402,7 +472,6 @@ export class ChatView extends ItemView {
 
   private buildRoleBar(): void {
     this.roleBarEl.empty();
-    this.roleBarEl.createSpan({ cls: 'claudian-role-label', text: t('role') });
 
     // "None" button (default)
     const noneBtn = this.roleBarEl.createEl('button', {
@@ -412,6 +481,7 @@ export class ChatView extends ItemView {
     noneBtn.addEventListener('click', () => {
       this.activeRole = null;
       this.buildRoleBar();
+      this.updateHeaderChip();
     });
 
     // Preset role buttons
@@ -424,6 +494,7 @@ export class ChatView extends ItemView {
       btn.addEventListener('click', () => {
         this.activeRole = this.activeRole?.id === role.id ? null : role;
         this.buildRoleBar();
+        this.updateHeaderChip();
       });
     }
   }
@@ -541,6 +612,7 @@ export class ChatView extends ItemView {
       return;
     }
 
+    this.toggleSettingsPanel(false);
     this.historyEl.removeClass('is-hidden');
     await this.refreshHistoryList();
   }
@@ -640,6 +712,7 @@ export class ChatView extends ItemView {
     this.helpEl.toggleClass('is-hidden', isVisible);
     if (!isVisible) {
       this.historyEl.addClass('is-hidden');
+      this.toggleSettingsPanel(false);
     }
   }
 
@@ -674,6 +747,7 @@ export class ChatView extends ItemView {
       t('help.role.tutor'),
       t('help.role.socratic'),
       t('help.role.language'),
+      t('help.role.ielts'),
     ]);
 
     addSection(t('help.commands.heading'), [
@@ -1450,6 +1524,20 @@ export class ChatView extends ItemView {
 
     // Clear selection and hide bar
     this.chatState.clearSelection();
+  }
+
+  /** Obsidian calls this when the leaf is resized — adapt the header to narrow sidebars */
+  onResize(): void {
+    this.applyWidthClass();
+  }
+
+  /** Below this width the header chip collapses to icon-only and settings rows stack */
+  private applyWidthClass(): void {
+    if (!this.rootEl) return;
+    const width = this.rootEl.clientWidth;
+    if (width > 0) {
+      this.rootEl.toggleClass('is-narrow', width < 400);
+    }
   }
 
   async onClose(): Promise<void> {

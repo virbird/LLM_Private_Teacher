@@ -15,7 +15,7 @@
 
 /* Header */
 .claudian-header {
-  padding: 8px 12px;
+  padding: 6px 10px;
   border-bottom: 1px solid var(--background-modifier-border);
   flex-shrink: 0;
 }
@@ -423,22 +423,152 @@
   to { transform: rotate(360deg); }
 }
 
-/* Header row with provider/model controls */
+/* Header row: single compact line (icon actions + status chip) */
 .claudian-header-row {
   display: flex;
   align-items: center;
-  gap: 6px;
-  padding: 4px 0;
-  flex-wrap: wrap;
+  gap: 4px;
+  min-width: 0;
 }
 
 .claudian-header-spacer {
   flex: 1;
 }
 
-.claudian-header-label {
-  font-size: 11px;
+/* Icon-only header actions */
+.claudian-icon-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 26px;
+  height: 26px;
+  padding: 0;
+  border-radius: 5px;
+  border: 1px solid transparent;
+  background: transparent;
   color: var(--text-muted);
+  cursor: pointer;
+}
+
+.claudian-icon-btn:hover {
+  background: var(--background-modifier-hover);
+  color: var(--text-normal);
+}
+
+.claudian-icon-btn .svg-icon {
+  width: 16px;
+  height: 16px;
+}
+
+/* Status chip: current model · role · material — opens the quick settings panel */
+.claudian-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  min-width: 0;
+  max-width: 100%;
+  padding: 3px 8px;
+  font-size: 11px;
+  border-radius: 12px;
+  border: 1px solid var(--background-modifier-border);
+  background: var(--background-secondary);
+  color: var(--text-muted);
+  cursor: pointer;
+  white-space: nowrap;
+  overflow: hidden;
+}
+
+.claudian-chip:hover {
+  background: var(--background-modifier-hover);
+  border-color: var(--interactive-accent);
+}
+
+.claudian-chip.is-active {
+  border-color: var(--interactive-accent);
+  color: var(--text-normal);
+}
+
+.claudian-chip-model,
+.claudian-chip-material {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 110px;
+}
+
+.claudian-chip-sep {
+  opacity: 0.5;
+}
+
+.claudian-chip-role {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  color: var(--text-normal);
+  font-weight: 600;
+}
+
+.claudian-chip-role-name {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 120px;
+}
+
+.claudian-chip-caret {
+  opacity: 0.6;
+}
+
+/* Quick settings panel (provider / model / material / role) */
+.claudian-settings-panel {
+  flex-shrink: 0;
+  padding: 8px 10px;
+  border-bottom: 1px solid var(--background-modifier-border);
+  background: var(--background-secondary);
+}
+
+.claudian-settings-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 3px 0;
+}
+
+.claudian-settings-label {
+  flex: 0 0 62px;
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--text-muted);
+}
+
+.claudian-settings-control {
+  display: flex;
+  flex: 1;
+  min-width: 0;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+.claudian-settings-control .claudian-select {
+  flex: 1;
+  min-width: 0;
+  max-width: none;
+}
+
+/* Narrow sidebar: chip shows only the role, settings rows stack */
+.claudian-container.is-narrow .claudian-chip-model,
+.claudian-container.is-narrow .claudian-chip-material,
+.claudian-container.is-narrow .claudian-chip-sep {
+  display: none;
+}
+
+.claudian-container.is-narrow .claudian-settings-row {
+  flex-direction: column;
+  align-items: stretch;
+  gap: 3px;
+}
+
+.claudian-container.is-narrow .claudian-settings-label {
+  flex: none;
 }
 
 .claudian-header-btn {
@@ -673,21 +803,12 @@
   border-color: var(--interactive-accent);
 }
 
-/* === Role Selector Bar === */
+/* === Role Selector (chip grid inside the quick settings panel) === */
 .claudian-role-bar {
   display: flex;
   align-items: center;
-  gap: 6px;
-  padding: 4px 10px;
-  border-bottom: 1px solid var(--background-modifier-border);
-  background: var(--background-primary);
-}
-
-.claudian-role-label {
-  font-size: 11px;
-  font-weight: 600;
-  color: var(--text-muted);
-  white-space: nowrap;
+  gap: 4px;
+  flex-wrap: wrap;
 }
 
 .claudian-role-btn {
