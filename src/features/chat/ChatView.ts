@@ -29,6 +29,9 @@ export const VIEW_TYPE_CLAUDIAN = 'claudian-api-view';
 
 const REQUEST_TIMEOUT_MS = 300_000; // 300 seconds (5 min) idle timeout
 
+/** How many previous user turns keep their image attachments in the request (bounds token cost) */
+const HISTORY_IMAGE_TURNS = 2;
+
 type I18nKey = keyof typeof EnMap;
 
 const BASE_SLASH_COMMANDS = [
@@ -935,12 +938,13 @@ export class ChatView extends ItemView {
       // Material path set but content already included or unavailable — no action needed
     }
 
-    this.chatState.addUserMessage(text);
+    const userMsg = this.chatState.addUserMessage(text);
     const assistantMsg = this.chatState.startAssistantMessage();
     this.streamingMsgId = assistantMsg.id;
 
     // Resolve image references (from user input and injected material) as multimodal parts
     const imageParts = await this.resolveImages(resolvedText);
+    this.chatState.attachImages(userMsg.id, imageParts);
 
     this.statusEl.textContent = t('sending');
 
@@ -968,6 +972,10 @@ export class ChatView extends ItemView {
     // Note: filter removes the empty assistant placeholder; no slice needed
     const allUserMsgs = this.chatState.messages.filter(mm => mm.role === 'user');
     const lastUserMsg = allUserMsgs[allUserMsgs.length - 1];
+    // Retain images from the most recent history turns (excluding current) to bound token cost
+    const recentUserIds = new Set(
+      allUserMsgs.slice(-1 - HISTORY_IMAGE_TURNS, -1).map(mm => mm.id),
+    );
     const apiMessages: ApiMessage[] = this.chatState.messages
       .filter(m => m.role === 'user' || (m.role === 'assistant' && m.content))
       .map(m => {
@@ -981,6 +989,16 @@ export class ChatView extends ItemView {
             };
           }
           return { role: 'user' as const, content: resolvedText };
+        }
+        // Re-attach images from recent history so vision models keep visual context
+        if (m.role === 'user' && recentUserIds.has(m.id)) {
+          const historyImages = this.chatState.getImages(m.id);
+          if (historyImages && historyImages.length > 0) {
+            return {
+              role: 'user' as const,
+              content: [{ type: 'text' as const, text: m.content }, ...historyImages],
+            };
+          }
         }
         return { role: m.role, content: m.content };
       });

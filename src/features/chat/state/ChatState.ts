@@ -1,4 +1,4 @@
-import type { ChatMessage, StreamChunk, UsageInfo, ToolCallDisplay } from '../../../core/types/chat';
+import type { ChatMessage, StreamChunk, UsageInfo, ToolCallDisplay, ContentPart } from '../../../core/types/chat';
 
 export interface ChatStateCallbacks {
   onMessagesChanged: () => void;
@@ -17,6 +17,11 @@ export class ChatState {
   autoScrollEnabled = true;
   conversationId = '';
   selectedMessageIds = new Set<string>();
+  /**
+   * Image attachments per user message id (in-memory only, not persisted).
+   * Keeps recent images available for follow-up turns without bloating session files.
+   */
+  private imageAttachments = new Map<string, ContentPart[]>();
   private onSelectionChanged?: () => void;
 
   private callbacks: ChatStateCallbacks;
@@ -47,6 +52,23 @@ export class ChatState {
 
   getSelectedCount(): number {
     return this.selectedMessageIds.size;
+  }
+
+  /** Attach resolved image content parts to a user message (in-memory only) */
+  attachImages(messageId: string, parts: ContentPart[]): void {
+    if (parts.length > 0) {
+      this.imageAttachments.set(messageId, parts);
+    }
+  }
+
+  /** Get image content parts previously attached to a user message */
+  getImages(messageId: string): ContentPart[] | undefined {
+    return this.imageAttachments.get(messageId);
+  }
+
+  /** Returns true if any message in the conversation has image attachments */
+  hasImages(): boolean {
+    return this.imageAttachments.size > 0;
   }
 
   addUserMessage(content: string): ChatMessage {
@@ -145,6 +167,11 @@ export class ChatState {
       isSummary: true,
     };
     this.messages = [summaryMsg, ...keptMessages];
+    // Drop image attachments for messages no longer in the conversation
+    const keptIds = new Set(keptMessages.map(m => m.id));
+    for (const id of [...this.imageAttachments.keys()]) {
+      if (!keptIds.has(id)) this.imageAttachments.delete(id);
+    }
     this.usage = null;
     this.callbacks.onMessagesChanged();
   }
@@ -155,6 +182,7 @@ export class ChatState {
     this.currentTextContent = '';
     this.usage = null;
     this.selectedMessageIds.clear();
+    this.imageAttachments.clear();
     this.callbacks.onMessagesChanged();
     this.callbacks.onStreamingChanged(false);
     this.callbacks.onUsageChanged(null);

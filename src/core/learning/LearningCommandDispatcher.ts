@@ -16,9 +16,10 @@ import { importApkg, exportApkg } from './apkgTransfer';
 import { loadSqlJs } from './sqlJsLoader';
 import { buildStudyBuddyPrompt } from '../prompt/studyBuddy';
 import { buildErrorReviewPrompt } from '../prompt/errorReview';
-import { type App } from 'obsidian';
+import { type App, TFile } from 'obsidian';
 import type { PluginSettings } from '../types/settings';
-import type { ChatMessage } from '../types/chat';
+import type { ChatMessage, ApiMessage, ContentPart } from '../types/chat';
+import { resolveImageParts, type ImageReadAdapter } from '../../utils/imageResolver';
 import type { ChatRequest } from '../providers/LlmProvider';
 import type { RolePreset } from '../prompt/roles';
 import { t } from '../i18n';
@@ -695,6 +696,26 @@ export class LearningCommandDispatcher {
 
   // --- AI Call Helper ---
 
+  /** Resolve image references in a prompt to base64 content parts for vision models */
+  private async resolveImages(text: string, app: App): Promise<ContentPart[]> {
+    const adapter: ImageReadAdapter = {
+      resolveLink: (linkpath: string) => {
+        const file = app.metadataCache.getFirstLinkpathDest(linkpath, '');
+        return file ? file.path : null;
+      },
+      readBinary: async (fullPath: string) => {
+        const file = app.vault.getAbstractFileByPath(fullPath);
+        if (!(file instanceof TFile)) return null;
+        try {
+          return await app.vault.readBinary(file);
+        } catch {
+          return null;
+        }
+      },
+    };
+    return resolveImageParts(text, adapter);
+  }
+
   private async callAI(userPrompt: string, ctx: CommandContext): Promise<string> {
     const provider = ProviderRegistry.get(ctx.settings.activeProvider);
     if (!provider) {
@@ -706,8 +727,12 @@ export class LearningCommandDispatcher {
       activeRole: ctx.activeRole,
     });
 
-    const messages = [
-      { role: 'user' as const, content: userPrompt },
+    // Attach images referenced in the prompt (e.g. embeds from learning material)
+    const imageParts = await this.resolveImages(userPrompt, ctx.app);
+    const messages: ApiMessage[] = [
+      imageParts.length > 0
+        ? { role: 'user', content: [{ type: 'text', text: userPrompt }, ...imageParts] }
+        : { role: 'user', content: userPrompt },
     ];
 
     let response = '';
