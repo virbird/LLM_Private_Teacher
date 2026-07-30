@@ -3,6 +3,7 @@ import type { ProviderToolDefinition, NormalizedToolCall } from '../types/tools'
 import type { LlmProvider, ChatRequest, StreamEvent } from './LlmProvider';
 import { streamRequest } from '../../utils/request';
 import { parseOpenAISSE } from '../agent/StreamingParser';
+import { toOpenAIUserContent } from './contentConverter';
 
 export class OpenAICompatProvider implements LlmProvider {
   readonly id = 'openai-compat' as const;
@@ -86,6 +87,9 @@ export class OpenAICompatProvider implements LlmProvider {
     for (const msg of request.messages) {
       if (msg.role === 'tool') {
         messages.push({ role: 'tool', tool_call_id: msg.tool_call_id, content: msg.content });
+      } else if (msg.role === 'user' && Array.isArray(msg.content)) {
+        // Multimodal user message: convert ContentPart[] to OpenAI image_url format
+        messages.push({ role: 'user', content: toOpenAIUserContent(msg.content) });
       } else {
         messages.push({ role: msg.role, content: msg.content });
       }

@@ -3,6 +3,7 @@ import type { ProviderToolDefinition, NormalizedToolCall } from '../types/tools'
 import type { LlmProvider, ChatRequest, StreamEvent } from './LlmProvider';
 import { streamRequest } from '../../utils/request';
 import { parseOpenAISSE } from '../agent/StreamingParser';
+import { toOpenAIUserContent } from './contentConverter';
 
 const OPENAI_API_URL = 'https://api.openai.com/v1/chat/completions';
 
@@ -96,7 +97,9 @@ export class OpenAIProvider implements LlmProvider {
     }
     for (const msg of request.messages) {
       if (msg.role === 'user') {
-        messages.push({ role: 'user', content: msg.content });
+        // Multimodal user message: convert ContentPart[] to OpenAI image_url format
+        const content = Array.isArray(msg.content) ? toOpenAIUserContent(msg.content) : msg.content;
+        messages.push({ role: 'user', content });
       } else if (msg.role === 'assistant') {
         messages.push({ role: 'assistant', content: msg.content });
       } else if (msg.role === 'tool') {

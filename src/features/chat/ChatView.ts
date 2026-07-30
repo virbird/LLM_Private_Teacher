@@ -9,7 +9,8 @@ import { ProviderRegistry } from '../../core/providers/ProviderRegistry';
 import { buildSystemPrompt } from '../../core/prompt/systemPrompt';
 import { ROLE_PRESETS, type RolePreset } from '../../core/prompt/roles';
 import { MethodRegistry } from '../../core/learning/MethodRegistry';
-import type { ApiMessage, Conversation, UsageInfo } from '../../core/types/chat';
+import type { ApiMessage, Conversation, UsageInfo, ContentPart } from '../../core/types/chat';
+import { isImagePath, resolveImageParts, type ImageReadAdapter } from '../../utils/imageResolver';
 import type { LearningMaterial } from '../../core/types/settings';
 import type { ProviderId } from '../../core/types/provider';
 import type { ConversationMeta } from '../../core/storage/SessionStorage';
@@ -938,6 +939,9 @@ export class ChatView extends ItemView {
     const assistantMsg = this.chatState.startAssistantMessage();
     this.streamingMsgId = assistantMsg.id;
 
+    // Resolve image references (from user input and injected material) as multimodal parts
+    const imageParts = await this.resolveImages(resolvedText);
+
     this.statusEl.textContent = t('sending');
 
     this.abortController = new AbortController();
@@ -969,6 +973,13 @@ export class ChatView extends ItemView {
       .map(m => {
         // Replace the last user message with resolved text (includes material)
         if (m === lastUserMsg) {
+          // Attach images as multimodal content parts when present
+          if (imageParts.length > 0) {
+            return {
+              role: 'user' as const,
+              content: [{ type: 'text' as const, text: resolvedText }, ...imageParts],
+            };
+          }
           return { role: 'user' as const, content: resolvedText };
         }
         return { role: m.role, content: m.content };
@@ -1270,6 +1281,8 @@ export class ChatView extends ItemView {
 
     while ((match = mentionRegex.exec(text)) !== null) {
       const filePath = match[1];
+      // Image files are resolved separately as multimodal content parts
+      if (isImagePath(filePath)) continue;
       const file = this.app.vault.getAbstractFileByPath(filePath);
       if (file instanceof TFile) {
         try {
@@ -1282,6 +1295,26 @@ export class ChatView extends ItemView {
 
     if (contexts.length === 0) return text;
     return text + '\n\n<referenced_files>' + contexts.join('\n') + '\n</referenced_files>';
+  }
+
+  /** Resolve image references (@mention / ![[embed]] / ![](path)) in text to base64 content parts */
+  private async resolveImages(text: string): Promise<ContentPart[]> {
+    const adapter: ImageReadAdapter = {
+      resolveLink: (linkpath: string) => {
+        const file = this.app.metadataCache.getFirstLinkpathDest(linkpath, '');
+        return file ? file.path : null;
+      },
+      readBinary: async (fullPath: string) => {
+        const file = this.app.vault.getAbstractFileByPath(fullPath);
+        if (!(file instanceof TFile)) return null;
+        try {
+          return await this.app.vault.readBinary(file);
+        } catch {
+          return null;
+        }
+      },
+    };
+    return resolveImageParts(text, adapter);
   }
 
   private getActiveModel(): string {

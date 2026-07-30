@@ -1,4 +1,4 @@
-import type { ApiMessage, AssistantContent } from '../../types/chat';
+import type { ApiMessage } from '../../types/chat';
 
 /**
  * Serializes a ChatRequest messages array into a single text prompt
@@ -17,12 +17,15 @@ export function serializeMessages(messages: ApiMessage[]): string {
     // Array content (user ContentPart[] or assistant AssistantContent[])
     const parts: string[] = [];
     for (const block of msg.content as Array<Record<string, unknown>>) {
-      const b = block as AssistantContent & { type: string };
-      if (b.type === 'text') {
-        parts.push(b.text);
-      } else if (b.type === 'tool_use') {
-        parts.push(`[Tool Call: ${b.name}(${JSON.stringify(b.input)})]`);
-      } else if (b.type === 'thinking') {
+      const type = block.type as string;
+      if (type === 'text') {
+        parts.push(block.text as string);
+      } else if (type === 'tool_use') {
+        parts.push(`[Tool Call: ${block.name as string}(${JSON.stringify(block.input)})]`);
+      } else if (type === 'image') {
+        // CLI providers cannot transmit images; note the attachment for context
+        parts.push('[Image attached — not viewable via CLI provider]');
+      } else if (type === 'thinking') {
         // Skip thinking blocks in serialization — they are internal
       }
     }
