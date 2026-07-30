@@ -23,6 +23,7 @@ An AI learning assistant embedded directly in your Obsidian vault. It makes dire
 - **Error notebook** — collects quiz mistakes for targeted review
 - **Learning statistics** — track flashcards, reviews, quizzes, and activity streak
 - **File references** — `@filename` to include vault files in context
+- **Image support (vision models)** — `@image.png`, `![[embeds]]`, and images in learning material are sent to vision-capable models (max 4 per message, 5 MB each)
 - **Quote to chat** — right-click selected text to quote it into AI Study Buddy
 - **Inline edits** — edit, explain, translate, summarize selected text
 - **Conversation history** — automatically saved
@@ -103,6 +104,17 @@ These call AI and save results to your vault:
 
 - Type `@filename` in the input to include a vault file as context
 - Right-click selected text in the editor and choose **Claudian: Quote to chat**
+
+### Use images with vision models
+
+When your provider/model supports vision (e.g. GPT-4o, Claude, Qwen-VL), images are sent automatically:
+
+- `@screenshot.png` — reference an image directly in your message
+- `![[diagram.png]]` — images embedded in your **learning material** are included automatically
+- Works with learning commands too: `/flashcard English Vocabulary` on an image-based material generates cards from the images
+- Images from the **last 2 turns** stay in context, so follow-up questions still "see" them
+- Limits: 4 images per message, 5 MB each; supported formats are png, jpg, gif, webp
+- CLI providers cannot transmit images — use an API provider for vision tasks
 
 ## CLI Providers (Desktop Only)
 

@@ -713,6 +713,8 @@ export class ChatView extends ItemView {
     addSection(t('help.reference.heading'), [
       t('help.reference.1'),
       t('help.reference.2'),
+      t('help.reference.3'),
+      t('help.reference.4'),
     ]);
 
     addSection(t('help.misc.heading'), [
