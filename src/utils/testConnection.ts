@@ -27,13 +27,15 @@ export async function testAnthropic(apiKey: string, model: string): Promise<Test
         max_tokens: 1,
         messages: [{ role: 'user', content: 'Hi' }],
       }),
+      // Handle non-2xx ourselves so the API's own error text survives
+      throw: false,
     });
 
     const latency = Date.now() - start;
     if (response.status === 200) {
       return { success: true, message: `Connected to ${model}`, latencyMs: latency };
     }
-    return { success: false, message: `Unexpected status: ${response.status}`, latencyMs: latency };
+    return { success: false, message: describeHttpError(response.status, response.text), latencyMs: latency };
   } catch (e: unknown) {
     const latency = Date.now() - start;
     const msg = parseApiError(e);
@@ -60,31 +62,61 @@ export async function testOpenAI(apiKey: string, model: string, baseUrl: string)
         max_tokens: 1,
         messages: [{ role: 'user', content: 'Hi' }],
       }),
+      // Handle non-2xx ourselves so the API's own error text survives
+      throw: false,
     });
 
     const latency = Date.now() - start;
     if (response.status === 200) {
       return { success: true, message: `Connected to ${model}`, latencyMs: latency };
     }
-    return { success: false, message: `Unexpected status: ${response.status}`, latencyMs: latency };
+    return { success: false, message: describeHttpError(response.status, response.text), latencyMs: latency };
   } catch (e: unknown) {
     const latency = Date.now() - start;
     const msg = parseApiError(e);
     return { success: false, message: msg, latencyMs: latency };
   }
 }
+
+/** Short label for a known HTTP status */
+function statusLabel(status: number): string {
+  if (status === 401) return 'Invalid API key (401 Unauthorized)';
+  if (status === 403) return 'Access denied (403 Forbidden)';
+  if (status === 404) return 'Model not found (404)';
+  if (status === 429) return 'Rate limited (429) — API key may be valid';
+  if (status === 500) return 'Server error (500)';
+  if (status === 529) return 'Service overloaded (529)';
+  return `HTTP ${status}`;
+}
+
+/** Pull the provider's own explanation out of an error body */
+function extractApiMessage(body: string | undefined): string {
+  if (!body) return '';
+  try {
+    const parsed = JSON.parse(body) as { error?: { message?: string } | string; message?: string };
+    const err = parsed.error;
+    const message = typeof err === 'string' ? err : err?.message ?? parsed.message ?? '';
+    return message.slice(0, 300);
+  } catch {
+    return body.slice(0, 200);
+  }
+}
+
+/**
+ * Combine the status label with the API's own message, so causes that only the
+ * provider knows about (unactivated model, quota, region) reach the user.
+ */
+function describeHttpError(status: number, body: string | undefined): string {
+  const label = statusLabel(status);
+  const detail = extractApiMessage(body);
+  return detail ? `${label}: ${detail}` : label;
+}
+
 function parseApiError(e: unknown): string {
   // Obsidian's requestUrl throws with status info
   if (e && typeof e === 'object' && 'status' in e) {
     const err = e as { status: number; message?: string };
-    const body = err.message || '';
-    if (err.status === 401) return 'Invalid API key (401 Unauthorized)';
-    if (err.status === 403) return 'Access denied (403 Forbidden)';
-    if (err.status === 404) return 'Model not found (404)';
-    if (err.status === 429) return 'Rate limited (429) — API key may be valid';
-    if (err.status === 500) return 'Server error (500)';
-    if (err.status === 529) return 'Service overloaded (529)';
-    return `HTTP ${err.status}: ${body.substring(0, 200)}`;
+    return describeHttpError(err.status, err.message);
   }
   if (e instanceof Error && e.message.includes('fetch')) return `Network error: ${e.message}`;
   return e instanceof Error ? e.message : String(e);

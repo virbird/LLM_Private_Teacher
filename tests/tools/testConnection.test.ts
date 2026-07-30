@@ -78,5 +78,42 @@ describe('testConnection', () => {
       expect(result.success).toBe(false);
       expect(result.message).toContain('404');
     });
+
+    it('surfaces the API error message on a non-2xx response', async () => {
+      // Real DashScope body when a third-party model is not activated for the account
+      mockRequestUrl.mockResolvedValue({
+        status: 400,
+        text: JSON.stringify({
+          error: {
+            message: 'The product is not activated, please confirm that you have activated products and try again after activation.',
+            code: 'invalid_parameter_error',
+          },
+        }),
+      } as any);
+
+      const result = await testOpenAI('sk-test', 'kimi/kimi-k3', 'https://dashscope.aliyuncs.com/compatible-mode/v1');
+      expect(result.success).toBe(false);
+      expect(result.message).toContain('HTTP 400');
+      expect(result.message).toContain('product is not activated');
+    });
+
+    it('keeps the status label when the body carries no message', async () => {
+      mockRequestUrl.mockResolvedValue({ status: 404, text: '' } as any);
+      const result = await testOpenAI('sk-test', 'nope', 'https://api.openai.com/v1');
+      expect(result.message).toBe('Model not found (404)');
+    });
+
+    it('falls back to raw text for a non-JSON error body', async () => {
+      mockRequestUrl.mockResolvedValue({ status: 502, text: '<html>Bad Gateway</html>' } as any);
+      const result = await testOpenAI('sk-test', 'model', 'https://proxy.example.com/v1');
+      expect(result.message).toContain('HTTP 502');
+      expect(result.message).toContain('Bad Gateway');
+    });
+
+    it('reads the body without letting requestUrl throw', async () => {
+      mockRequestUrl.mockResolvedValue({ status: 200 } as any);
+      await testOpenAI('sk-test', 'model', 'https://api.example.com/v1');
+      expect(mockRequestUrl).toHaveBeenCalledWith(expect.objectContaining({ throw: false }));
+    });
   });
 });
