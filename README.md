@@ -4,24 +4,25 @@ An AI learning assistant embedded directly in your Obsidian vault. It makes dire
 
 ## Features
 
-- **AI chat sidebar** inside Obsidian
+- **AI chat sidebar** inside Obsidian (or open it as a full-width tab in the main pane)
 - **Bilingual UI** — English / 中文, switchable in Settings
 - **Direct API calls** — no middleman, your API key stays local
 - **Multiple providers** — API mode (Anthropic Claude, OpenAI, OpenAI Compatible) and CLI mode (Claude CLI, Pi CLI, Codex CLI, ACP, OpenCode)
 - **CLI auto-detection** — automatically finds CLI executables in PATH, Homebrew, nvm, and other common locations
+- **Compact header** — provider, model, material and role collapse into one status chip, leaving room for the conversation in narrow sidebars
 - **Learning materials** — select any Markdown note as the current study material
-- **Learning roles** — Private Tutor, Socratic Tutor (STEM), Language Partner (Humanities)
+- **Learning roles** — Private Tutor, Socratic Tutor (STEM), Language Partner (Humanities), IELTS Writing High-Score Coach
 - **8 learning method commands** — `/guide`, `/quiz`, `/confuse`, `/gap`, `/predict`, `/audio`, `/feynman`, `/mock`
 - **9 learning action commands** — `/flashcard`, `/summary`, `/map`, `/plan`, `/review`, `/checkup`, `/stats`, `/mistakes`, `/buddy`
-- **Card management commands** — `/card list`, `/card edit`, `/card delete`, `/card suspend`, `/card resume`, `/card export`, `/card import`, `/card help`
+- **Card management** — `/card list`, `/card edit`, `/card delete`, `/card suspend`/`resume`, `/card export`, `/card import`, `/card help`
 - **Subject + topic classification** — flashcards organized by subject (e.g. `/flashcard 物理 量子力学`), review by subject
 - **Cloze deletion cards** — `/flashcard cloze <subject> <topic>` generates `{{c1::...}}` fill-in-the-blank cards
 - **Learning steps scheduling** — new cards go through 10min → 1d steps before graduating to SM-2 spaced repetition
-- **Card management** — `/card list`, `/card edit`, `/card delete`, `/card suspend`/`resume` for full card lifecycle control
 - **Import/Export** — `/card export [json|apkg]` exports to CSV (Anki-compatible), JSON (full fidelity), or Anki `.apkg`; `/card import <path>` imports from any supported format
 - **Spaced repetition** — SM-2 algorithm schedules flashcard reviews automatically, filter by subject/topic
 - **Error notebook** — collects quiz mistakes for targeted review
 - **Learning statistics** — track flashcards, reviews, quizzes, and activity streak
+- **Save replies as notes** — tick AI replies (or **Select all**) and save the Q&A pairs as a Markdown note
 - **File references** — `@filename` to include vault files in context
 - **Image support (vision models)** — `@image.png`, `![[embeds]]`, and images in learning material are sent to vision-capable models (max 4 per message, 5 MB each)
 - **Quote to chat** — right-click selected text to quote it into AI Study Buddy
@@ -47,23 +48,28 @@ Search "AI Study Buddy" in Obsidian Community Plugins and install.
 2. **API mode**: Enter your API key for at least one provider
 3. **CLI mode** (Desktop only): Install a CLI tool (e.g. `claude`), leave the CLI path empty for auto-detection, then click **Test CLI** to verify
 4. (Optional) For CLI providers, type any model name the CLI supports in the model field
-5. Open the AI Study Buddy view from the ribbon icon or command palette
+5. Open the AI Study Buddy view from the ribbon icon or the command palette (**Open chat view**). For long outputs, run **Open chat view in main pane** to get a full-width tab instead of the sidebar.
 
 ## Usage
 
+### The header at a glance
+
+The header is a single row: `＋` new conversation, `🕘` history, `?` help, and a **status chip** on the right showing the current **model · role · material**. Click the chip to open the quick settings panel, where provider, model, material and role live. In narrow sidebars the chip collapses to just the role icon.
+
 ### Select a learning material
 
-- Click **+ Material** in the chat header
+- Click the status chip, then **+ Material** in the panel
 - Search and pick a Markdown file from your vault
 - The dropdown groups files by folder, mirroring your vault structure
 
 ### Switch learning role
 
-Use the **Role** bar to choose:
+Click the status chip and pick a role from the panel:
 
 - **Private Tutor** — systematic five-step teaching loop based on your material
 - **Socratic Tutor (STEM)** — asks guiding questions instead of giving direct answers
 - **Language Partner (Humanities)** — vocabulary, grammar, translation, and cultural context
+- **IELTS Writing High-Score Coach** — grades essays on the official four criteria (TR/CC/LR/GRA) with paragraph-level feedback, a full revision, and an action list
 
 ### Use learning method commands
 
@@ -104,6 +110,13 @@ These call AI and save results to your vault:
 
 - Type `@filename` in the input to include a vault file as context
 - Right-click selected text in the editor and choose **Claudian: Quote to chat**
+
+### Save replies as notes
+
+- Tick the checkbox in the top-right corner of any AI reply — a bar appears at the bottom with **Select all / Save selected / Clear**
+- **Select all** picks every reply in the conversation, which is the quick path for a long multi-round session (also available as **Select all AI replies in chat** in the command palette, so it works before you tick anything)
+- Saved notes land in the `学习笔记/` folder (configurable in Settings) as `qa-note-<timestamp>.md`, one `## Q/A` section per selected reply
+- The confirmation notice shows the full path and is clickable to open the note
 
 ### Use images with vision models
 

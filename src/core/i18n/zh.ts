@@ -164,6 +164,7 @@ export const zh = {
   'help.misc.3': '点右上角状态芯片可快速切换提供商 / 模型 / 材料 / 角色。',
   'help.misc.4': '<strong>存为笔记</strong>：勾选 AI 回复右上角的复选框，底部会出现 <strong>全选 / 保存所选 / 清除</strong>；多轮对话点【全选】一次存全部。也可在命令面板搜索 “Select all AI replies” 直接全选。',
   'help.misc.5': '笔记保存到 <code>学习笔记/</code> 目录，保存后提示可直接点击打开。',
+  'help.misc.6': '长篇回复建议在主编辑区阅读 — 命令面板执行 <strong>Open chat view in main pane</strong> 可在全宽标签页打开。',
   'help.footer': '提示：学习命令会携带当前选中的材料和角色设定一起发送给 AI。闪卡按学科/主题分类，复习时可按学科筛选。',
 
   // --- SettingsTab ---

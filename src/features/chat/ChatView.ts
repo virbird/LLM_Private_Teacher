@@ -823,6 +823,7 @@ export class ChatView extends ItemView {
       t('help.misc.3'),
       t('help.misc.4'),
       t('help.misc.5'),
+      t('help.misc.6'),
     ]);
 
     const footer = content.createDiv({ cls: 'claudian-help-footer' });
