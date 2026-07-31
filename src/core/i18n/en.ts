@@ -169,7 +169,7 @@ export const en = {
 
   // --- SettingsTab ---
   'settings.activeProvider': 'Active Provider',
-  'settings.activeProvider.desc': 'Choose which LLM provider to use',
+  'settings.activeProvider.desc': 'Choose which LLM provider to use — only the selected provider\'s settings are shown below',
   'settings.apiKey': 'API Key',
   'settings.apiKey.anthropic.desc': 'Your Anthropic API key',
   'settings.model': 'Model',

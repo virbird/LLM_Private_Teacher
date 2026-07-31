@@ -8,6 +8,8 @@ import { CliResolver } from '../../core/providers/cli/CliResolver';
 
 export class ClaudianSettingsTab extends PluginSettingTab {
   plugin: ClaudianPlugin;
+  /** Container re-rendered when the active provider changes (shows only that provider's settings) */
+  private providerSectionEl!: HTMLElement;
 
   constructor(app: App, plugin: ClaudianPlugin) {
     super(app, plugin);
@@ -62,10 +64,99 @@ export class ClaudianSettingsTab extends PluginSettingTab {
           .onChange(async (value) => {
             this.plugin.settings.activeProvider = value as ProviderId;
             await this.plugin.saveSettings();
+            // Swap the section below to the newly selected provider
+            this.renderProviderSection();
           });
       });
 
-    // === Anthropic section ===
+    // Only the active provider's settings are shown — the previous flat list of
+    // all 8 providers made the page a very long scroll.
+    this.providerSectionEl = containerEl.createDiv();
+    this.renderProviderSection();
+
+    // === General section ===
+    new Setting(containerEl).setName(t('settings.general')).setHeading();
+
+    new Setting(containerEl)
+      .setName(t('settings.systemPrompt'))
+      .setDesc(t('settings.systemPrompt.desc'))
+      .addTextArea(text => text
+        .setPlaceholder(t('settings.systemPrompt.placeholder'))
+        .setValue(this.plugin.settings.systemPrompt)
+        .onChange(async (value) => {
+          this.plugin.settings.systemPrompt = value;
+          await this.plugin.saveSettings();
+        }));
+
+    new Setting(containerEl)
+      .setName(t('settings.noteFolder'))
+      .setDesc(t('settings.noteFolder.desc'))
+      .addText(text => text
+        .setPlaceholder('学习笔记')
+        .setValue(this.plugin.settings.learning.noteFolder)
+        .onChange(async (value) => {
+          this.plugin.settings.learning.noteFolder = value.trim() || '学习笔记';
+          await this.plugin.saveSettings();
+        }));
+
+    new Setting(containerEl)
+      .setName(t('settings.contextCompression'))
+      .setDesc(t('settings.contextCompression.desc'))
+      .addToggle(toggle => toggle
+        .setValue(this.plugin.settings.contextCompressionEnabled)
+        .onChange(async (value) => {
+          this.plugin.settings.contextCompressionEnabled = value;
+          await this.plugin.saveSettings();
+        }));
+
+  }
+
+  /** Render only the currently selected provider's settings into the section container */
+  private renderProviderSection(): void {
+    const el = this.providerSectionEl;
+    el.empty();
+
+    switch (this.plugin.settings.activeProvider) {
+      case 'anthropic':
+        this.renderAnthropicSection(el);
+        break;
+      case 'openai':
+        this.renderOpenAISection(el);
+        break;
+      case 'openai-compat':
+        this.renderOpenAICompatSection(el);
+        break;
+      case 'claude-cli':
+        this.renderCliIntro(el);
+        this.addCliProviderSettings(el, 'claudeCli', 'Claude CLI', ['claude'], 'claude-sonnet-4-20250514', true);
+        break;
+      case 'pi-cli':
+        this.renderCliIntro(el);
+        this.addCliProviderSettings(el, 'piCli', 'Pi CLI', ['pi'], 'default', false);
+        break;
+      case 'codex-cli':
+        this.renderCliIntro(el);
+        this.addCliProviderSettings(el, 'codexCli', 'Codex CLI', ['codex'], 'o3', false);
+        break;
+      case 'opencode-cli':
+        this.renderCliIntro(el);
+        this.addCliProviderSettings(el, 'opencodeCli', 'OpenCode CLI', ['opencode'], 'default', false);
+        break;
+      case 'acp-cli':
+        this.renderCliIntro(el);
+        this.addCliProviderSettings(el, 'acpCli', 'ACP CLI', ['acp'], 'default', false);
+        break;
+    }
+  }
+
+  private renderCliIntro(containerEl: HTMLElement): void {
+    containerEl.createEl('p', {
+      text: t('settings.cliProviders.desc'),
+      cls: 'setting-item-description',
+    });
+  }
+
+  private renderAnthropicSection(containerEl: HTMLElement): void {
     new Setting(containerEl).setName('Anthropic Claude').setHeading();
 
     new Setting(containerEl)
@@ -109,8 +200,9 @@ export class ClaudianSettingsTab extends PluginSettingTab {
         this.plugin.settings.providers.anthropic.model,
       ),
     );
+  }
 
-    // === OpenAI section ===
+  private renderOpenAISection(containerEl: HTMLElement): void {
     new Setting(containerEl).setName('OpenAI').setHeading();
 
     new Setting(containerEl)
@@ -145,8 +237,9 @@ export class ClaudianSettingsTab extends PluginSettingTab {
         'https://api.openai.com/v1',
       ),
     );
+  }
 
-    // === OpenAI Compatible section ===
+  private renderOpenAICompatSection(containerEl: HTMLElement): void {
     new Setting(containerEl).setName('OpenAI Compatible').setHeading();
     containerEl.createEl('p', {
       text: t('settings.openaiCompat.desc'),
@@ -196,73 +289,7 @@ export class ClaudianSettingsTab extends PluginSettingTab {
         this.plugin.settings.providers.openaiCompat.baseUrl,
       ),
     );
-
-    // === CLI Providers (Desktop Only) ===
-    if (Platform.isDesktopApp) {
-      new Setting(containerEl).setName(t('settings.cliProviders')).setHeading();
-      containerEl.createEl('p', {
-        text: t('settings.cliProviders.desc'),
-        cls: 'setting-item-description',
-      });
-
-      // --- Claude CLI ---
-      this.addCliProviderSettings(containerEl, 'claudeCli', 'Claude CLI', ['claude'],
-        'claude-sonnet-4-20250514', true);
-
-      // --- Pi CLI ---
-      this.addCliProviderSettings(containerEl, 'piCli', 'Pi CLI', ['pi'],
-        'default', false);
-
-      // --- Codex CLI ---
-      this.addCliProviderSettings(containerEl, 'codexCli', 'Codex CLI', ['codex'],
-        'o3', false);
-
-      // --- OpenCode CLI ---
-      this.addCliProviderSettings(containerEl, 'opencodeCli', 'OpenCode CLI', ['opencode'],
-        'default', false);
-
-      // --- ACP CLI ---
-      this.addCliProviderSettings(containerEl, 'acpCli', 'ACP CLI', ['acp'],
-        'default', false);
-    }
-
-    // === General section ===
-    new Setting(containerEl).setName(t('settings.general')).setHeading();
-
-    new Setting(containerEl)
-      .setName(t('settings.systemPrompt'))
-      .setDesc(t('settings.systemPrompt.desc'))
-      .addTextArea(text => text
-        .setPlaceholder(t('settings.systemPrompt.placeholder'))
-        .setValue(this.plugin.settings.systemPrompt)
-        .onChange(async (value) => {
-          this.plugin.settings.systemPrompt = value;
-          await this.plugin.saveSettings();
-        }));
-
-    new Setting(containerEl)
-      .setName(t('settings.noteFolder'))
-      .setDesc(t('settings.noteFolder.desc'))
-      .addText(text => text
-        .setPlaceholder('学习笔记')
-        .setValue(this.plugin.settings.learning.noteFolder)
-        .onChange(async (value) => {
-          this.plugin.settings.learning.noteFolder = value.trim() || '学习笔记';
-          await this.plugin.saveSettings();
-        }));
-
-    new Setting(containerEl)
-      .setName(t('settings.contextCompression'))
-      .setDesc(t('settings.contextCompression.desc'))
-      .addToggle(toggle => toggle
-        .setValue(this.plugin.settings.contextCompressionEnabled)
-        .onChange(async (value) => {
-          this.plugin.settings.contextCompressionEnabled = value;
-          await this.plugin.saveSettings();
-        }));
-
   }
-
 
   private addModelManager(containerEl: HTMLElement): void {
     new Setting(containerEl).setName(t('settings.models')).setHeading();

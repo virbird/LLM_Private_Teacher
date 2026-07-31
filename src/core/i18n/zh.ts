@@ -169,7 +169,7 @@ export const zh = {
 
   // --- SettingsTab ---
   'settings.activeProvider': '当前提供商',
-  'settings.activeProvider.desc': '选择使用的 LLM 提供商',
+  'settings.activeProvider.desc': '选择使用的 LLM 提供商，下方仅显示所选提供商的配置',
   'settings.apiKey': 'API Key',
   'settings.apiKey.anthropic.desc': '你的 Anthropic API Key',
   'settings.model': '模型',
