@@ -376,6 +376,9 @@
 }
 
 .claudian-btn {
+  /* iOS WebKit paints native button chrome (white pill + shadow) unless appearance is reset */
+  -webkit-appearance: none;
+  appearance: none;
   padding: 4px 12px;
   border-radius: 6px;
   border: 1px solid var(--background-modifier-border);
@@ -474,18 +477,30 @@
   border-radius: 5px;
   border: 1px solid transparent;
   background: transparent;
-  color: var(--text-muted);
+  /* No hover on touch devices — icons must be legible without it */
+  color: var(--text-normal);
+  box-shadow: none;
   cursor: pointer;
 }
 
 .claudian-icon-btn:hover {
   background: var(--background-modifier-hover);
-  color: var(--text-normal);
 }
 
 .claudian-icon-btn .svg-icon {
   width: 16px;
   height: 16px;
+}
+
+/* Mobile (Obsidian adds is-mobile on body): bigger touch targets and icons */
+body.is-mobile .claudian-icon-btn {
+  width: 36px;
+  height: 36px;
+}
+
+body.is-mobile .claudian-icon-btn .svg-icon {
+  width: 20px;
+  height: 20px;
 }
 
 /* Status chip: current model · role · material — opens the quick settings panel */
