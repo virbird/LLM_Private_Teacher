@@ -488,8 +488,11 @@
 }
 
 .claudian-icon-btn .svg-icon {
+  display: block;
+  flex-shrink: 0;
   width: 16px;
   height: 16px;
+  stroke: currentColor;
 }
 
 /* Mobile (Obsidian adds is-mobile on body): bigger touch targets and icons */

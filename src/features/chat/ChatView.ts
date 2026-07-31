@@ -339,17 +339,22 @@ export class ChatView extends ItemView {
 
     const row = this.headerEl.createDiv({ cls: 'claudian-header-row' });
 
-    const iconBtn = (icon: string, label: string, onClick: () => void): void => {
+    const iconBtn = (icon: string, fallbackText: string, label: string, onClick: () => void): void => {
       const btn = row.createEl('button', { cls: 'claudian-btn claudian-icon-btn' });
       setIcon(btn, icon);
+      // setIcon silently renders nothing when the icon name is missing from the
+      // running Obsidian's icon set (seen on older iPad builds) — fall back to text
+      if (!btn.querySelector('svg')) {
+        btn.setText(fallbackText);
+      }
       btn.setAttribute('aria-label', label);
       btn.title = label;
       btn.addEventListener('click', onClick);
     };
 
-    iconBtn('plus', t('new.title'), () => this.startNewConversation());
-    iconBtn('history', t('history.title'), () => { void this.toggleHistory(); });
-    iconBtn('help-circle', t('help.title'), () => this.toggleHelp());
+    iconBtn('plus', '＋', t('new.title'), () => this.startNewConversation());
+    iconBtn('history', '🕘', t('history.title'), () => { void this.toggleHistory(); });
+    iconBtn('help-circle', '？', t('help.title'), () => this.toggleHelp());
 
     row.createDiv({ cls: 'claudian-header-spacer' });
 
