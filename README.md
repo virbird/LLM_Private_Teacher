@@ -10,6 +10,7 @@ An AI learning assistant embedded directly in your Obsidian vault. It makes dire
 - **Multiple providers** — API mode (Anthropic Claude, OpenAI, OpenAI Compatible) and CLI mode (Claude CLI, Pi CLI, Codex CLI, ACP, OpenCode)
 - **CLI auto-detection** — automatically finds CLI executables in PATH, Homebrew, nvm, and other common locations
 - **Compact header** — provider, model, material and role collapse into one status chip, leaving room for the conversation in narrow sidebars
+- **Focused settings page** — only the active provider's configuration is shown; switch the Active Provider dropdown to configure others
 - **Learning materials** — select any Markdown note as the current study material
 - **Learning roles** — Private Tutor, Socratic Tutor (STEM), Language Partner (Humanities), IELTS Writing High-Score Coach
 - **8 learning method commands** — `/guide`, `/quiz`, `/confuse`, `/gap`, `/predict`, `/audio`, `/feynman`, `/mock`
@@ -45,10 +46,11 @@ Search "AI Study Buddy" in Obsidian Community Plugins and install.
 ## Setup
 
 1. Open AI Study Buddy settings
-2. **API mode**: Enter your API key for at least one provider
-3. **CLI mode** (Desktop only): Install a CLI tool (e.g. `claude`), leave the CLI path empty for auto-detection, then click **Test CLI** to verify
-4. (Optional) For CLI providers, type any model name the CLI supports in the model field
-5. Open the AI Study Buddy view from the ribbon icon or the command palette (**Open chat view**). For long outputs, run **Open chat view in main pane** to get a full-width tab instead of the sidebar.
+2. Pick your provider in **Active Provider** — the page shows only the selected provider's settings (switch the dropdown to configure another one)
+3. **API mode**: Enter your API key for the selected provider
+4. **CLI mode** (Desktop only): Install a CLI tool (e.g. `claude`), leave the CLI path empty for auto-detection, then click **Test CLI** to verify. Type any model name the CLI supports in the model field.
+5. Click **Test** to verify the configuration — the result includes the provider's own error message (e.g. model not activated, invalid key)
+6. Open the AI Study Buddy view from the ribbon icon or the command palette (**Open chat view**). For long outputs, run **Open chat view in main pane** to get a full-width tab instead of the sidebar.
 
 ## Usage
 
@@ -144,7 +146,7 @@ CLI providers call LLMs via local command-line tools instead of HTTP APIs. No AP
 ### Setup
 
 1. Install the CLI tool (e.g. `npm install -g @anthropic-ai/claude-code`)
-2. In Settings, leave the **CLI Path** field empty — the plugin auto-detects the executable
+2. In Settings, select the CLI provider in **Active Provider** to reveal its settings, and leave the **CLI Path** field empty — the plugin auto-detects the executable
 3. Enter any model name in the **Model** field (e.g. `claude-sonnet-4-20250514`)
 4. Click **Test CLI** to verify the installation
 
